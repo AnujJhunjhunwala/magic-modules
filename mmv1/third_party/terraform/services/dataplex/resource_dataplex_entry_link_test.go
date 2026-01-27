@@ -30,6 +30,12 @@ func TestAccDataplexEntryLink_update(t *testing.T) {
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: []string{"entry_group_id", "entry_link_id", "location"},
 			},
+      {
+				ResourceName:            "google_dataplex_entry_link.full_entry_link",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"entry_group_id", "entry_link_id", "location"},
+			},
 		},
 	})
 }
@@ -79,6 +85,27 @@ resource "google_dataplex_entry_link" "basic_entry_link" {
   entry_references {
     name = "projects/${google_dataplex_entry_group.entry-group-basic.project}/locations/us-central1/entryGroups/@dataplex/entries/projects/${google_dataplex_entry_group.entry-group-basic.project}/locations/us-central1/glossaries/${google_dataplex_glossary.term_test_id_full.glossary_id}/terms/${google_dataplex_glossary_term.term_test_id_full.term_id}"
 	type = "TARGET"
+  }
+}
+resource "google_dataplex_entry_link" "full_entry_link" {
+  project = "%{project_number}"
+  location = "us-central1"
+  entry_group_id = google_dataplex_entry_group.entry-group-basic.entry_group_id
+  entry_link_id = "tf-test-entry-link%{random_suffix}"
+  entry_link_type = "projects/655216118709/locations/global/entryLinkTypes/definition"
+  entry_references {
+    name = google_dataplex_entry.source.name
+	  type = "SOURCE"
+  }
+  entry_references {
+    name = "projects/${google_dataplex_entry_group.entry-group-basic.project}/locations/us-central1/entryGroups/@dataplex/entries/projects/${google_dataplex_entry_group.entry-group-basic.project}/locations/us-central1/glossaries/${google_dataplex_glossary.term_test_id_full.glossary_id}/terms/${google_dataplex_glossary_term.term_test_id_full.term_id}"
+	  type = "TARGET"
+  }
+  aspects {
+    aspect_type = "%{project_number}.us-central1.some-first-party-aspect-type"
+    data = <<EOF
+        {"story": "SEQUENCE"    }
+      EOF
   }
 }
 `, context)

@@ -1,0 +1,41 @@
+aspects := res["aspects"]
+if aspects != nil {
+	_, errors := NumberOfEntryLinkAspectsValidation(aspects, "aspects")
+	if len(errors) > 0 {
+		return nil, errors[0]
+	}
+}
+
+aspectTypeKeysOfInterest := make(map[string]struct{})
+var err error
+
+if d.HasChange("aspects") {
+	currentAspects, futureAspects := d.GetChange("aspects")
+	err = AddEntryLinkAspectsToSet(aspectTypeKeysOfInterest, currentAspects)
+	if err != nil {
+		return nil, err
+	}
+	err = AddEntryLinkAspectsToSet(aspectTypeKeysOfInterest, futureAspects)
+	if err != nil {
+		return nil, err
+	}
+} else {
+	err = AddEntryLinkAspectsToSet(aspectTypeKeysOfInterest, d.Get("aspects"))
+	if err != nil {
+		return nil, err
+	}
+}
+
+err = FilterAspects(aspectTypeKeysOfInterest, res)
+
+if err != nil {
+	return nil, err
+}
+
+err = InverseTransformEntryLinkAspects(res)
+
+if err != nil {
+	return nil, err
+}
+
+return res, nil

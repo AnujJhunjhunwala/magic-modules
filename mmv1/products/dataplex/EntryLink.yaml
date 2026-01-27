@@ -26,6 +26,12 @@ create_url: 'projects/{{project}}/locations/{{location}}/entryGroups/{{entry_gro
 immutable: true
 import_format:
   - 'projects/{{project}}/locations/{{location}}/entryGroups/{{entry_group_id}}/entryLinks/{{entry_link_id}}'
+
+custom_code:
+  constants: templates/terraform/constants/dataplex_entry_link.go.tmpl
+  decoder: templates/terraform/decoders/dataplex_entry_link.go.tmpl
+  encoder: templates/terraform/encoders/dataplex_entry_link.go.tmpl
+
 timeouts:
   insert_minutes: 20
   delete_minutes: 20
@@ -111,3 +117,29 @@ properties:
           enum_values:
             - 'SOURCE'
             - 'TARGET'
+  - name: 'aspects'
+    type: Array
+    custom_flatten: 'templates/terraform/custom_flatten/dataplex_entry_link_aspects.go.tmpl'
+    description: |
+      The Aspects attached to the Entry Link.
+    required: true
+    item_type:
+      type: NestedObject
+      properties:
+        - name: 'aspectType'
+          type: String
+          description: |
+            The resource name of the type used to create this Aspect.
+          required: true
+          validation:
+            function: EntryLinkAspectProjectNumberValidation
+        - name: 'data'
+          type: String
+          required: true
+          state_func: 'func(v interface{}) string { s, _ := structure.NormalizeJsonString(v); return s }'
+          custom_flatten: 'templates/terraform/custom_flatten/json_schema.tmpl'
+          custom_expand: 'templates/terraform/custom_expand/json_schema.tmpl'
+          validation:
+            function: 'validation.StringIsJSON'
+          description: |
+            The content of the aspect in JSON form, according to its aspect type schema. The maximum size of the field is 120KB (encoded as UTF-8).
