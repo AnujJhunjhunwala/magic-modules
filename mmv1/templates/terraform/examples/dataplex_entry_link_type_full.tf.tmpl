@@ -1,0 +1,13 @@
+resource "google_dataplex_entry_link_type" "{{$.PrimaryResourceId}}" {
+  entry_link_type_id = "{{index $.Vars "entry_link_type_name"}}"
+  project = "{{index $.TestEnvVars "project_name"}}"
+  location = "us-central1"
+
+  labels = { "tag": "test-tf" }
+  display_name = "terraform entry link type"
+  description = "entry link type created by Terraform"
+  
+  required_aspects {
+    type = "projects/655216118709/locations/global/aspectTypes/contacts"
+  }
+}

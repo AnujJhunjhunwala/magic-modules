@@ -1,0 +1,121 @@
+# Copyright 2024 Google Inc.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+---
+name: 'EntryLinkType'
+description: |
+ An Entry Link Type is a template for creating Entry Links.
+docs:
+base_url: 'projects/{{project}}/locations/{{location}}/entryLinkTypes/{{entry_link_type_id}}'
+self_link: 'projects/{{project}}/locations/{{location}}/entryLinkTypes/{{entry_link_type_id}}'
+create_url: 'projects/{{project}}/locations/{{location}}/entryLinkTypes?entryLinkTypeId={{entry_link_type_id}}'
+update_verb: 'PATCH'
+update_mask: true
+import_format:
+  - 'projects/{{project}}/locations/{{location}}/entryLinkTypes/{{entry_link_type_id}}'
+timeouts:
+  insert_minutes: 5
+  update_minutes: 5
+  delete_minutes: 5
+autogen_async: true
+async:
+  actions: ['create', 'update']
+  type: 'OpAsync'
+  operation:
+    base_url: '{{op_id}}'
+    timeouts:
+      insert_minutes: 5
+      update_minutes: 5
+  result:
+    resource_inside_response: false
+iam_policy:
+  exclude_import_test: true
+  method_name_separator: ':'
+  parent_resource_attribute: 'entry_link_type_id'
+  import_format:
+    - 'projects/{{project}}/locations/{{location}}/entryLinkTypes/{{entry_link_type_id}}'
+    - '{{entry_link_type_id}}'
+custom_code:
+examples:
+  - name: 'dataplex_entry_link_type_basic'
+    primary_resource_id: 'test_entry_link_type_basic'
+    primary_resource_name: 'fmt.Sprintf("tf-test-entry-link-type%s", context["random_suffix"])'
+    vars:
+      entry_link_type_name: 'entry-link-type-basic'
+    test_env_vars:
+      project_name: 'PROJECT_NAME'
+  - name: 'dataplex_entry_link_type_full'
+    primary_resource_id: 'test_entry_link_type_full'
+    primary_resource_name: 'fmt.Sprintf("tf-test-entry-link-type%s", context["random_suffix"])'
+    vars:
+      entry_link_type_name: 'entry-link-type-full'
+    test_env_vars:
+      project_name: 'PROJECT_NAME'
+      aspect_project_name: 'dataplex-types'
+parameters:
+  - name: 'location'
+    type: String
+    description: |
+      The location where entry link type will be created in.
+    url_param_only: true
+    immutable: true
+  - name: 'entryLinkTypeId'
+    type: String
+    description: |
+      The entry link type id of the entry link type.
+    url_param_only: true
+    immutable: true
+properties:
+  - name: 'name'
+    type: String
+    description: |
+      The relative resource name of the EntryLinkType, of the form: projects/{project_number}/locations/{location_id}/entryLinkTypes/{entry_link_type_id}
+    output: true
+  - name: 'uid'
+    type: String
+    description: |
+      System generated globally unique ID for the EntryLinkType. This ID will be different if the EntryLinkType is deleted and re-created with the same name.
+    output: true
+  - name: 'createTime'
+    type: Time
+    description: |
+      The time when the EntryLinkType was created.
+    output: true
+  - name: 'updateTime'
+    type: Time
+    description: |
+      The time when the EntryLinkType was last updated.
+    output: true
+  - name: 'description'
+    type: String
+    description: |
+      Description of the EntryLinkType.
+  - name: 'displayName'
+    type: String
+    description: |
+      User friendly display name.
+  - name: 'labels'
+    type: KeyValueLabels
+    description: |
+      User-defined labels for the EntryLinkType.
+  - name: 'requiredAspects'
+    type: Array
+    description: |
+      AspectInfo for the entry link type.
+    item_type:
+      type: NestedObject
+      properties:
+        - name: 'type'
+          type: String
+          description: |
+            Required aspect type for the entry link type.
