@@ -98,75 +98,89 @@ func AddEntryLinkAspectsToSet(aspectTypeKeySet map[string]struct{}, aspects inte
 // re-inserting the "aspectType". Modifies obj in-place.
 // It returns an error if type assertions fail.
 func InverseTransformEntryLinkAspects(res map[string]interface{}) error {
-	aspectsRaw, ok := res["aspects"]
-	if !ok || aspectsRaw == nil {
-		return nil
-	}
+    aspectsRaw, ok := res["aspects"]
+    if !ok || aspectsRaw == nil {
+        return nil
+    }
 
-	originalMap, ok := aspectsRaw.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("InverseTransformEntryLinkAspects: 'aspects' field is not a map[string]interface{}, got %T", aspectsRaw)
-	}
+    originalMap, ok := aspectsRaw.(map[string]interface{})
+    if !ok {
+        return fmt.Errorf("InverseTransformEntryLinkAspects: 'aspects' field is not a map[string]interface{}, got %T", aspectsRaw)
+    }
 
-	newSlice := make([]interface{}, 0, len(originalMap))
+    newSlice := make([]interface{}, 0, len(originalMap))
 
-	for key, value := range originalMap {
-		innerMap, ok := value.(map[string]interface{})
-		if !ok {
-			return fmt.Errorf("InverseTransformEntryLinkAspects: value for key '%s' is not a map[string]interface{}, got %T", key, value)
-		}
-		box := make(map[string]interface{}, 2)
-		box["aspectType"] = key
-		box["aspect"] = innerMap
-		newSlice = append(newSlice, box)
-	}
-	res["aspects"] = newSlice
-	return nil
+    for key, value := range originalMap {
+        innerMap, ok := value.(map[string]interface{})
+        if !ok {
+            return fmt.Errorf("InverseTransformEntryLinkAspects: value for key '%s' is not a map[string]interface{}, got %T", key, value)
+        }
+
+        data, dataOk := innerMap["data"]
+        if !dataOk {
+            return fmt.Errorf("InverseTransformEntryLinkAspects: value for key '%s' does not contain 'data' field", key)
+        }
+
+        dataMap, isMap := data.(map[string]interface{})
+        if !isMap {
+            return fmt.Errorf("InverseTransformEntryLinkAspects: 'data' field for key '%s' is not a map[string]interface{}, got %T", key, data)
+        }
+
+        dataBytes, err := json.Marshal(dataMap)
+        if err != nil {
+            return fmt.Errorf("InverseTransformEntryLinkAspects: could not marshal 'data' map to string for key '%s': %w", key, err)
+        }
+
+        box := make(map[string]interface{}, 2)
+        box["aspectType"] = key
+        box["data"] = string(dataBytes) // data in TF state is string
+        newSlice = append(newSlice, box)
+    }
+    res["aspects"] = newSlice
+    return nil
 }
 
 // TransformEntryLinkAspects concisely transforms the "aspects" slice within obj into a map.
 // Modifies obj in-place.
 // It returns an error if type assertions fail or expected keys are missing.
 func TransformEntryLinkAspects(obj map[string]interface{}) error {
-	aspectsRaw, ok := obj["aspects"]
-	if !ok || aspectsRaw == nil {
-		return nil
-	}
+    aspectsRaw, ok := obj["aspects"]
+    if !ok || aspectsRaw == nil {
+        return nil
+    }
 
-	originalSlice, ok := aspectsRaw.([]interface{})
-	if !ok {
-		return fmt.Errorf("TransformAspects: 'aspects' field is not a []interface{}, got %T", aspectsRaw)
-	}
+    originalSlice, ok := aspectsRaw.([]interface{})
+    if !ok {
+        return fmt.Errorf("TransformAspects: 'aspects' field is not a []interface{}, got %T", aspectsRaw)
+    }
 
-	newMap := make(map[string]interface{}, len(originalSlice))
-	for i, item := range originalSlice {
-		aspectMap, ok := item.(map[string]interface{})
-		if !ok {
-			return fmt.Errorf("TransformEntryLinkAspects: item in 'aspects' slice at index %d is not a map[string]interface{}, got %T", i, item)
-		}
+    newMap := make(map[string]interface{}, len(originalSlice))
+    for i, item := range originalSlice {
+        aspectMap, ok := item.(map[string]interface{})
+        if !ok {
+            return fmt.Errorf("TransformEntryLinkAspects: item in 'aspects' slice at index %d is not a map[string]interface{}, got %T", i, item)
+        }
 
-		keyRaw, keyExists := aspectMap["aspectType"]
-		if !keyExists {
-			return fmt.Errorf("TransformEntryLinkAspects: 'aspectType' not found in aspect item at index %d", i)
-		}
-		key, ok := keyRaw.(string)
-		if !ok {
-			return fmt.Errorf("TransformEntryLinkAspects: 'aspectType' in item at index %d is not a string, got %T", i, keyRaw)
-		}
+        keyRaw, keyExists := aspectMap["aspectType"]
+        if !keyExists {
+            return fmt.Errorf("TransformEntryLinkAspects: 'aspectType' not found in aspect item at index %d", i)
+        }
+        key, ok := keyRaw.(string)
+        if !ok {
+            return fmt.Errorf("TransformEntryLinkAspects: 'aspectType' in item at index %d is not a string, got %T", i, keyRaw)
+        }
 
-		valueRaw, valueExists := aspectMap["aspect"]
-		if !valueExists {
-			newMap[key] = map[string]interface{}{"data": map[string]interface{}{}}
-			continue
-		}
+        dataRaw, dataExists := aspectMap["data"]
+        if !dataExists {
+            return fmt.Errorf("TransformEntryLinkAspects: 'data' not found in aspect item at index %d", i)
+        }
 
-		value, ok := valueRaw.(map[string]interface{})
-		if ok {
-			newMap[key] = value
-		} else {
-			newMap[key] = map[string]interface{}{"data": map[string]interface{}{}}
-		}
-	}
-	obj["aspects"] = newMap
-	return nil
+        dataValue, ok := dataRaw.(map[string]interface{}) // data is passed as map because of StringIsJSON validation
+        if !ok {
+            return fmt.Errorf("TransformEntryLinkAspects: 'data' in item at index %d is not a map[string]interface{}, got %T", i, dataRaw)
+        }
+        newMap[key] = map[string]interface{}{"data": dataValue}
+    }
+    obj["aspects"] = newMap
+    return nil
 }

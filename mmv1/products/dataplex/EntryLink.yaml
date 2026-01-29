@@ -122,7 +122,6 @@ properties:
     custom_flatten: 'templates/terraform/custom_flatten/dataplex_entry_link_aspects.go.tmpl'
     description: |
       The Aspects attached to the Entry Link.
-    required: true
     item_type:
       type: NestedObject
       properties:

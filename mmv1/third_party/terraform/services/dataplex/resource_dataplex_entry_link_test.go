@@ -226,11 +226,13 @@ func TestInverseTransformEntryLinkAspects(t *testing.T) {
 		errorMsg         string
 	}{
 		{"aspects key is absent", map[string]interface{}{"otherKey": "value"}, nil, true, false, ""},
-		{"aspects value is nil", map[string]interface{}{"aspects": nil}, nil, true, false, ""},
-		{"aspects is empty map", map[string]interface{}{"aspects": map[string]interface{}{}}, []interface{}{}, false, false, ""},
-		{"aspects with one entry", map[string]interface{}{"aspects": map[string]interface{}{"key1": map[string]interface{}{"data": "value1"}}}, []interface{}{map[string]interface{}{"aspectType": "key1", "aspect": map[string]interface{}{"data": "value1"}}}, false, false, ""},
-		{"aspects is wrong type (not map)", map[string]interface{}{"aspects": "not a map"}, nil, false, true, "InverseTransformEntryLinkAspects: 'aspects' field is not a map[string]interface{}, got string"},
-		{"aspect value is not a map", map[string]interface{}{"aspects": map[string]interface{}{"key1": "not a map value"}}, nil, false, true, "InverseTransformEntryLinkAspects: value for key 'key1' is not a map[string]interface{}, got string"},
+        {"aspects value is nil", map[string]interface{}{"aspects": nil}, nil, true, false, ""},
+        {"aspects is empty map", map[string]interface{}{"aspects": map[string]interface{}{}}, []interface{}{}, false, false, ""},
+        {"aspects with one entry", map[string]interface{}{"aspects": map[string]interface{}{"key1": map[string]interface{}{"data": map[string]interface{}{"foo": "bar"}}}}, []interface{}{map[string]interface{}{"aspectType": "key1", "data": "{\"foo\":\"bar\"}"}}, false, false, ""},
+        {"aspects is wrong type (not map)", map[string]interface{}{"aspects": "not a map"}, nil, false, true, "InverseTransformEntryLinkAspects: 'aspects' field is not a map[string]interface{}, got string"},
+        {"aspect value does not contain data", map[string]interface{}{"aspects": map[string]interface{}{"key1": map[string]interface{}{"wrong": "value"}}}, nil, false, true, "InverseTransformEntryLinkAspects: value for key 'key1' does not contain 'data' field"},
+        {"aspect value is not a map", map[string]interface{}{"aspects": map[string]interface{}{"key1": "not a map value"}}, nil, false, true, "InverseTransformEntryLinkAspects: value for key 'key1' is not a map[string]interface{}, got string"},
+        {"data in aspect value is not a map", map[string]interface{}{"aspects": map[string]interface{}{"key1": map[string]interface{}{"data": "not-a-map"}}}, nil, false, true, "InverseTransformEntryLinkAspects: 'data' field for key 'key1' is not a map[string]interface{}, got string"},
 	}
 
 	for _, tc := range testCases {
@@ -304,17 +306,17 @@ func TestTransformEntryLinkAspects(t *testing.T) {
 		errorMsg         string
 	}{
 		{"aspects key is absent", map[string]interface{}{"otherKey": "value"}, nil, true, false, ""},
-		{"aspects value is nil", map[string]interface{}{"aspects": nil}, nil, true, false, ""},
-		{"aspects is empty slice", map[string]interface{}{"aspects": []interface{}{}}, map[string]interface{}{}, false, false, ""},
-		{"aspects with one item", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"aspectType": "key1", "aspect": map[string]interface{}{"data": "value1"}}}}, map[string]interface{}{"key1": map[string]interface{}{"data": "value1"}}, false, false, ""},
-		{"aspects with one item that has no aspect", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"aspectType": "key1"}}}, map[string]interface{}{"key1": map[string]interface{}{"data": map[string]interface{}{}}}, false, false, ""},
-		{"aspects with multiple items", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"aspectType": "key1", "aspect": map[string]interface{}{"data": "value1"}}, map[string]interface{}{"aspectType": "key2", "aspect": map[string]interface{}{"data": "value2"}}}}, map[string]interface{}{"key1": map[string]interface{}{"data": "value1"}, "key2": map[string]interface{}{"data": "value2"}}, false, false, ""},
-		{"aspects with duplicate aspectType", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"aspectType": "key1", "aspect": map[string]interface{}{"data": "value_first"}}, map[string]interface{}{"aspectType": "key2", "aspect": map[string]interface{}{"data": "value2"}}, map[string]interface{}{"aspectType": "key1", "aspect": map[string]interface{}{"data": "value_last"}}}}, map[string]interface{}{"key1": map[string]interface{}{"data": "value_last"}, "key2": map[string]interface{}{"data": "value2"}}, false, false, ""},
-		{"aspects is wrong type (not slice)", map[string]interface{}{"aspects": "not a slice"}, nil, false, true, "TransformAspects: 'aspects' field is not a []interface{}, got string"},
-		{"item in slice is not a map", map[string]interface{}{"aspects": []interface{}{"not a map"}}, nil, false, true, "TransformEntryLinkAspects: item in 'aspects' slice at index 0 is not a map[string]interface{}, got string"},
-		{"item map missing aspectType", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"wrongKey": "k1", "aspect": map[string]interface{}{}}}}, nil, false, true, "TransformEntryLinkAspects: 'aspectType' not found in aspect item at index 0"},
-		{"aspectType is not a string", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"aspectType": 123, "aspect": map[string]interface{}{}}}}, nil, false, true, "TransformEntryLinkAspects: 'aspectType' in item at index 0 is not a string, got int"},
-		{"aspect is present but wrong type", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"aspectType": "key1", "aspect": "not a map"}}}, map[string]interface{}{"key1": map[string]interface{}{"data": map[string]interface{}{}}}, false, false, ""},
+        {"aspects value is nil", map[string]interface{}{"aspects": nil}, nil, true, false, ""},
+        {"aspects is empty slice", map[string]interface{}{"aspects": []interface{}{}}, map[string]interface{}{}, false, false, ""},
+        {"aspects with one item", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"aspectType": "key1", "data": map[string]interface{}{"foo": "bar"}}}}, map[string]interface{}{"key1": map[string]interface{}{"data": map[string]interface{}{"foo": "bar"}}}, false, false, ""},
+        {"aspects with multiple items", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"aspectType": "key1", "data": map[string]interface{}{"foo": "bar"}}, map[string]interface{}{"aspectType": "key2", "data": map[string]interface{}{"abc": "xyz"}}}}, map[string]interface{}{"key1": map[string]interface{}{"data": map[string]interface{}{"foo": "bar"}}, "key2": map[string]interface{}{"data": map[string]interface{}{"abc": "xyz"}}}, false, false, ""},
+        {"aspects with duplicate aspectType", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"aspectType": "key1", "data": map[string]interface{}{"foo": "bar"}}, map[string]interface{}{"aspectType": "key2", "data": map[string]interface{}{"abc": "xyz"}}, map[string]interface{}{"aspectType": "key1", "data": map[string]interface{}{"new": "baz"}}}}, map[string]interface{}{"key1": map[string]interface{}{"data": map[string]interface{}{"new": "baz"}}, "key2": map[string]interface{}{"data": map[string]interface{}{"abc": "xyz"}}}, false, false, ""},
+        {"aspects is wrong type (not slice)", map[string]interface{}{"aspects": "not a slice"}, nil, false, true, "TransformAspects: 'aspects' field is not a []interface{}, got string"},
+        {"item in slice is not a map", map[string]interface{}{"aspects": []interface{}{"not a map"}}, nil, false, true, "TransformEntryLinkAspects: item in 'aspects' slice at index 0 is not a map[string]interface{}, got string"},
+        {"item map missing aspectType", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"wrongKey": "k1", "data": map[string]interface{}{}}}}, nil, false, true, "TransformEntryLinkAspects: 'aspectType' not found in aspect item at index 0"},
+        {"aspectType is not a string", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"aspectType": 123, "data": map[string]interface{}{}}}}, nil, false, true, "TransformEntryLinkAspects: 'aspectType' in item at index 0 is not a string, got int"},
+        {"item map missing data", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"aspectType": "key1"}}}, nil, false, true, "TransformEntryLinkAspects: 'data' not found in aspect item at index 0"},
+        {"data is not a map", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"aspectType": "key1", "data": "not-a-map"}}}, nil, false, true, "TransformEntryLinkAspects: 'data' in item at index 0 is not a map[string]interface{}, got string"},
 	}
 
 	for _, tc := range testCases {
@@ -382,6 +384,9 @@ func TestAccDataplexEntryLink_update(t *testing.T) {
 	acctest.VcrTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.AccTestPreCheck(t) },
 		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories(t),
+    ExternalProviders: map[string]resource.ExternalProvider{
+			"time": {},
+		},
 		Steps: []resource.TestStep{
 			{
 				Config: testAccDataplexEntryLink_dataplexEntryLinkUpdate(context),
@@ -449,25 +454,73 @@ resource "google_dataplex_entry_link" "basic_entry_link" {
 	type = "TARGET"
   }
 }
+resource "google_bigquery_dataset" "bq_dataset" {
+  dataset_id = "tf_test_dataset_%{random_suffix}"
+  project    = "%{project_number}"
+  location   = "us-central1"
+}
+
+resource "google_bigquery_table" "table1" {
+  dataset_id = google_bigquery_dataset.bq_dataset.dataset_id
+  table_id   = "table1_%{random_suffix}"
+  project    = "%{project_number}"
+  schema     = <<EOF
+[
+  {
+    "name": "col1",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Column 1"
+  }
+]
+EOF
+}
+
+resource "google_bigquery_table" "table2" {
+  dataset_id = google_bigquery_dataset.bq_dataset.dataset_id
+  table_id   = "table2_%{random_suffix}"
+  project    = "%{project_number}"
+  schema     = <<EOF
+[
+  {
+    "name": "colA",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Column A"
+  }
+]
+EOF
+}
+resource "time_sleep" "wait_180s_for_dataplex_ingestion" {
+  depends_on = [
+    google_bigquery_table.table1,
+    google_bigquery_table.table2,
+  ]
+  create_duration = "180s"
+}
 resource "google_dataplex_entry_link" "full_entry_link" {
+  depends_on = [time_sleep.wait_180s_for_dataplex_ingestion]
   project = "%{project_number}"
   location = "us-central1"
-  entry_group_id = google_dataplex_entry_group.entry-group-basic.entry_group_id
-  entry_link_id = "tf-test-entry-link%{random_suffix}"
-  entry_link_type = "projects/655216118709/locations/global/entryLinkTypes/definition"
+  entry_group_id = "@bigquery"
+  entry_link_id = "tf-test-full-entry-link%{random_suffix}"
+  entry_link_type = "projects/655216118709/locations/global/entryLinkTypes/schema-join"
   entry_references {
-    name = google_dataplex_entry.source.name
-	  type = "SOURCE"
+    name = "projects/%{project_number}/locations/us-central1/entryGroups/@bigquery/entries/bigquery.googleapis.com/projects/%{project_number}/datasets/${google_bigquery_dataset.bq_dataset.dataset_id}/tables/${google_bigquery_table.table1.table_id}"
+    type = ""
   }
   entry_references {
-    name = "projects/${google_dataplex_entry_group.entry-group-basic.project}/locations/us-central1/entryGroups/@dataplex/entries/projects/${google_dataplex_entry_group.entry-group-basic.project}/locations/us-central1/glossaries/${google_dataplex_glossary.term_test_id_full.glossary_id}/terms/${google_dataplex_glossary_term.term_test_id_full.term_id}"
-	  type = "TARGET"
+    name = "projects/%{project_number}/locations/us-central1/entryGroups/@bigquery/entries/bigquery.googleapis.com/projects/%{project_number}/datasets/${google_bigquery_dataset.bq_dataset.dataset_id}/tables/${google_bigquery_table.table2.table_id}"
+    type = ""
   }
   aspects {
-    aspect_type = "%{project_number}.us-central1.some-first-party-aspect-type"
+    aspect_type = "655216118709.global.schema-join"
     data = <<EOF
-        {"story": "SEQUENCE"    }
-      EOF
+{
+  "joins": [],
+  "userManaged": true
+}
+EOF
   }
 }
 `, context)
