@@ -13,7 +13,7 @@ func NumberOfEntryLinkAspectsValidation(i interface{}, k string) (warnings []str
 
 	if len(s)+len(m) > maxEntryLinkAspectNumber {
 		errors = append(errors, fmt.Errorf(
-			"field %q has an invalid content: %q. The maximal number of aspects is 99.",
+			"field %q has an invalid content: %q. The number of required aspects can be atmost 1.",
 			k, i,
 		))
 	}
@@ -21,20 +21,20 @@ func NumberOfEntryLinkAspectsValidation(i interface{}, k string) (warnings []str
 	return warnings, errors
 }
 
-// ProjectNumberValidation checks if the input string conforms to the pattern:
-// "projects/<project-number>/<anything>"
-func EntryLinkAspectProjectNumberValidation(i interface{}, k string) (warnings []string, errors []error) {
+// EntryLinkProjectNumberValidation checks if the input string conforms to the pattern:
+// "projects/<project-number>/<entry-link-name>"
+func EntryLinkProjectNumberValidation(i interface{}, k string) (warnings []string, errors []error) {
 	v, ok := i.(string)
+
 	if !ok {
 		errors = append(errors, fmt.Errorf("expected type of field %q to be string, but got %T", k, i))
 		return warnings, errors
 	}
 
-	var numberDotAnythingRegex = regexp.MustCompile(`^[1-9]\d*\..+$`)
-
-	if !numberDotAnythingRegex.MatchString(v) {
+	var projectNumberRegex = regexp.MustCompile(`^projects\/[1-9]\d*\/.+$`)
+	if !projectNumberRegex.MatchString(v) {
 		errors = append(errors, fmt.Errorf(
-			"field %q has an invalid format: %q. Expected format: '<project number>.anything'. Please note that project IDs are not supported.",
+			"field %q has an invalid format: %q. Expected format: 'projects/<project-number>/<entry-link-name>'. Please note that project IDs are not supported.",
 			k, v,
 		))
 	}
@@ -42,8 +42,29 @@ func EntryLinkAspectProjectNumberValidation(i interface{}, k string) (warnings [
 	return warnings, errors
 }
 
-// AddEntryLinkAspectsToSet adds aspect keys from the aspects interface to the aspectKeySet.
-// It returns an error if type assertions fail or expected keys are missing.
+// EntryLinkAspectProjectNumberValidation checks if the input string conforms to the pattern:
+// "655216118709.global.<first-party-entry-link-aspect-name>"
+func EntryLinkAspectProjectNumberValidation(i interface{}, k string) (warnings []string, errors []error) {
+	v, ok := i.(string)
+	if !ok {
+		errors = append(errors, fmt.Errorf("expected type of field %q to be string, but got %T", k, i))
+		return warnings, errors
+	}
+
+	var numberDotAnythingRegex = regexp.MustCompile(`655216118709\.global\..+$`)
+
+	if !numberDotAnythingRegex.MatchString(v) {
+		errors = append(errors, fmt.Errorf(
+			"field %q has an invalid format: %q. Expected format: '655216118709.global.<first-party-entry-link-aspect-name>'. Please note that project IDs are not supported.",
+			k, v,
+		))
+	}
+
+	return warnings, errors
+}
+
+// AddEntryLinkAspectsToSet adds aspect type keys from the aspects interface to the aspectTypeKeySet.
+// It returns an error if type assertions fail or expected aspect type keys are missing.
 func AddEntryLinkAspectsToSet(aspectTypeKeySet map[string]struct{}, aspects interface{}) error {
 	if aspects == nil {
 		return nil
@@ -73,7 +94,7 @@ func AddEntryLinkAspectsToSet(aspectTypeKeySet map[string]struct{}, aspects inte
 	return nil
 }
 
-// InverseTransformAspects converts the "aspects" map back to a slice of maps,
+// InverseTransformEntryLinkAspects converts the "aspects" map back to a slice of maps,
 // re-inserting the "aspectType". Modifies obj in-place.
 // It returns an error if type assertions fail.
 func InverseTransformEntryLinkAspects(res map[string]interface{}) error {
@@ -103,7 +124,7 @@ func InverseTransformEntryLinkAspects(res map[string]interface{}) error {
 	return nil
 }
 
-// TransformAspects concisely transforms the "aspects" slice within obj into a map.
+// TransformEntryLinkAspects concisely transforms the "aspects" slice within obj into a map.
 // Modifies obj in-place.
 // It returns an error if type assertions fail or expected keys are missing.
 func TransformEntryLinkAspects(obj map[string]interface{}) error {
