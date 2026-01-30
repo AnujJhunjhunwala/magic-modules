@@ -373,11 +373,49 @@ func TestTransformEntryLinkAspects(t *testing.T) {
 	}
 }
 
+func TestCompareJsonData(t *testing.T) {
+	key := "some_key"
+	
+	testCases := []struct {
+		name     string
+		old      string
+		new      string
+		expected bool
+	}{
+		{"identical simple json", `{"a": "b"}`, `{"a": "b"}`, true},
+		{"different ordering", `{"a": 1, "b": 2}`, `{"b": 2, "a": 1}`, true},
+		{"different whitespace", `{ "a" :   1 }`, `{"a":1}`, true},
+		{"totally different content", `{"a": "b"}`, `{"x": "y"}`, false},
+		{"same keys different values", `{"a": 1}`, `{"a": 2}`, false},
+		
+		// The "Double Encoding" cases (Critical for Permadiff fix)
+		{"double encoded state vs single encoded config", `"{\"joins\":[],\"userManaged\":true}"`, `{"joins":[],"userManaged":true}`, true},
+		{"double encoded state vs double encoded config", `"{\"a\":1}"`, `"{\"a\":1}"`, true},
+		{"double encoded state with whitespace vs single encoded config", `"{\"a\":   1}"`, `{"a":1}`, true},
+
+		// Edge/Error cases
+		{"invalid json in old", `{invalid}`, `{"a":1}`, false},
+		{"invalid json in new", `{"a":1}`, `{invalid}`, false},
+		{"empty strings", "", "", false},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Note: We pass nil for *schema.ResourceData as the function doesn't use it
+			result := dataplex.CompareJsonData(key, tc.old, tc.new, nil)
+			if result != tc.expected {
+				t.Fatalf("%s: compareJsonData() result mismatch: got %v, want %v\nOld: %s\nNew: %s", tc.name, result, tc.expected, tc.old, tc.new)
+			}
+		})
+	}
+}
+
 func TestAccDataplexEntryLink_update(t *testing.T) {
 	t.Parallel()
 
 	context := map[string]interface{}{
 		"project_number": envvar.GetTestProjectNumberFromEnv(),
+    "project_id":     envvar.GetTestProjectFromEnv(),
 		"random_suffix":  acctest.RandString(t, 10),
 	}
 
@@ -461,6 +499,7 @@ resource "google_bigquery_dataset" "bq_dataset" {
 }
 
 resource "google_bigquery_table" "table1" {
+  deletion_protection = false
   dataset_id = google_bigquery_dataset.bq_dataset.dataset_id
   table_id   = "table1_%{random_suffix}"
   project    = "%{project_number}"
@@ -477,6 +516,7 @@ EOF
 }
 
 resource "google_bigquery_table" "table2" {
+  deletion_protection = false
   dataset_id = google_bigquery_dataset.bq_dataset.dataset_id
   table_id   = "table2_%{random_suffix}"
   project    = "%{project_number}"
@@ -491,36 +531,34 @@ resource "google_bigquery_table" "table2" {
 ]
 EOF
 }
-resource "time_sleep" "wait_180s_for_dataplex_ingestion" {
+resource "time_sleep" "wait_120s_for_dataplex_ingestion" {
   depends_on = [
     google_bigquery_table.table1,
     google_bigquery_table.table2,
   ]
-  create_duration = "180s"
+  create_duration = "120s"
 }
 resource "google_dataplex_entry_link" "full_entry_link" {
-  depends_on = [time_sleep.wait_180s_for_dataplex_ingestion]
+  depends_on = [time_sleep.wait_120s_for_dataplex_ingestion]
   project = "%{project_number}"
   location = "us-central1"
   entry_group_id = "@bigquery"
   entry_link_id = "tf-test-full-entry-link%{random_suffix}"
   entry_link_type = "projects/655216118709/locations/global/entryLinkTypes/schema-join"
   entry_references {
-    name = "projects/%{project_number}/locations/us-central1/entryGroups/@bigquery/entries/bigquery.googleapis.com/projects/%{project_number}/datasets/${google_bigquery_dataset.bq_dataset.dataset_id}/tables/${google_bigquery_table.table1.table_id}"
+    name = "projects/%{project_number}/locations/us-central1/entryGroups/@bigquery/entries/bigquery.googleapis.com/projects/%{project_id}/datasets/${google_bigquery_dataset.bq_dataset.dataset_id}/tables/${google_bigquery_table.table1.table_id}"
     type = ""
   }
   entry_references {
-    name = "projects/%{project_number}/locations/us-central1/entryGroups/@bigquery/entries/bigquery.googleapis.com/projects/%{project_number}/datasets/${google_bigquery_dataset.bq_dataset.dataset_id}/tables/${google_bigquery_table.table2.table_id}"
+    name = "projects/%{project_number}/locations/us-central1/entryGroups/@bigquery/entries/bigquery.googleapis.com/projects/%{project_id}/datasets/${google_bigquery_dataset.bq_dataset.dataset_id}/tables/${google_bigquery_table.table2.table_id}"
     type = ""
   }
   aspects {
     aspect_type = "655216118709.global.schema-join"
-    data = <<EOF
-{
-  "joins": [],
-  "userManaged": true
-}
-EOF
+    data = jsonencode({
+      joins       = []
+      userManaged = true
+    })
   }
 }
 `, context)

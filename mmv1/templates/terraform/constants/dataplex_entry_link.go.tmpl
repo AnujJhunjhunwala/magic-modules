@@ -184,3 +184,35 @@ func TransformEntryLinkAspects(obj map[string]interface{}) error {
     obj["aspects"] = newMap
     return nil
 }
+
+func CompareJsonData(k, old, new string, d *schema.ResourceData) bool {
+	var o, n interface{}
+	
+	// Helper to unmarshal, handling potential double-encoding
+	unmarshalHelper := func(s string) (interface{}, error) {
+		var v interface{}
+		if err := json.Unmarshal([]byte(s), &v); err != nil {
+			return nil, err
+		}
+		// If the result is a string, it might be a JSON string inside a JSON string.
+		// Try unwrapping it one more time.
+		if sVal, ok := v.(string); ok {
+			var inner interface{}
+			// If we can unmarshal the inner string, return that object (Map/Slice)
+			if err := json.Unmarshal([]byte(sVal), &inner); err == nil {
+				return inner, nil
+			}
+		}
+		return v, nil
+	}
+
+	// Unmarshal both sides
+	o, errOld := unmarshalHelper(old)
+	n, errNew := unmarshalHelper(new)
+
+	if errOld != nil || errNew != nil {
+		return false
+	}
+
+	return reflect.DeepEqual(o, n)
+}
