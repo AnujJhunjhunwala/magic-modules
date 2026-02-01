@@ -1,7 +1,7 @@
 // CreateEntryLink supports exactly 1 required aspect. 
 const maxEntryLinkAspectNumber = 1
 
-// NumberOfEntryLinkAspectsValidation checks if the number of aspects on an entry exceeds certain threshold.
+// NumberOfEntryLinkAspectsValidation ensures that only single required aspect is attached to an entry link.
 func NumberOfEntryLinkAspectsValidation(i interface{}, k string) (warnings []string, errors []error) {
 	s, isSlice := i.([]interface{})
 	m, isMap := i.(map[string]interface{})
@@ -22,7 +22,7 @@ func NumberOfEntryLinkAspectsValidation(i interface{}, k string) (warnings []str
 }
 
 // EntryLinkProjectNumberValidation checks if the input string conforms to the pattern:
-// "projects/<project-number>/<entry-link-name>"
+// "projects/<project-number>/<anything>"
 func EntryLinkProjectNumberValidation(i interface{}, k string) (warnings []string, errors []error) {
 	v, ok := i.(string)
 
@@ -34,7 +34,7 @@ func EntryLinkProjectNumberValidation(i interface{}, k string) (warnings []strin
 	var projectNumberRegex = regexp.MustCompile(`^projects\/[1-9]\d*\/.+$`)
 	if !projectNumberRegex.MatchString(v) {
 		errors = append(errors, fmt.Errorf(
-			"field %q has an invalid format: %q. Expected format: 'projects/<project-number>/<entry-link-name>'. Please note that project IDs are not supported.",
+			"field %q has an invalid format: %q. Expected format: 'projects/<project-number>/<anything>'. Please note that project IDs are not supported.",
 			k, v,
 		))
 	}
@@ -185,20 +185,20 @@ func TransformEntryLinkAspects(obj map[string]interface{}) error {
     return nil
 }
 
+// CompareJsonData suppresses diffs for JSON strings by normalizing them before comparison.
+// It handles potential double-encoding where the API might return a stringified JSON object
+// wrapped in quotes (e.g., "\"{\"a\":1}\"") vs a standard JSON string in the config.
 func CompareJsonData(k, old, new string, d *schema.ResourceData) bool {
 	var o, n interface{}
-	
-	// Helper to unmarshal, handling potential double-encoding
+
 	unmarshalHelper := func(s string) (interface{}, error) {
 		var v interface{}
 		if err := json.Unmarshal([]byte(s), &v); err != nil {
 			return nil, err
 		}
-		// If the result is a string, it might be a JSON string inside a JSON string.
-		// Try unwrapping it one more time.
+
 		if sVal, ok := v.(string); ok {
 			var inner interface{}
-			// If we can unmarshal the inner string, return that object (Map/Slice)
 			if err := json.Unmarshal([]byte(sVal), &inner); err == nil {
 				return inner, nil
 			}
@@ -206,7 +206,6 @@ func CompareJsonData(k, old, new string, d *schema.ResourceData) bool {
 		return v, nil
 	}
 
-	// Unmarshal both sides
 	o, errOld := unmarshalHelper(old)
 	n, errNew := unmarshalHelper(new)
 

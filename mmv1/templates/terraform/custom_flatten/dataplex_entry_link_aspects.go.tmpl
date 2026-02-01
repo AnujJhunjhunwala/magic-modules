@@ -1,69 +1,62 @@
+// flatten{{$.GetPrefix}}{{$.TitlelizeProperty}} converts the API response for Entry Link aspects into a
+// Terraform-compatible slice. It normalizes JSON data fields, maps keys, and sorts the aspects
+// (preferring configuration order, but falling back to alphabetical sorting for imports).
 func flatten{{$.GetPrefix}}{{$.TitlelizeProperty}}(v interface{}, d *schema.ResourceData, config *transport_tpg.Config) interface{} {
-    if v == nil {
-        return []interface{}{}
-    }
+	if v == nil {
+		return []interface{}{}
+	}
 
-    // 1. Expect a Slice (Decoder has already transformed Map -> Slice)
-    l, ok := v.([]interface{})
-    if !ok {
-        return []interface{}{}
-    }
+	l, ok := v.([]interface{})
+	if !ok {
+		return []interface{}{}
+	}
 
-    transformed := make([]map[string]interface{}, 0, len(l))
+	transformed := make([]map[string]interface{}, 0, len(l))
 
-    for _, raw := range l {
-        original, ok := raw.(map[string]interface{})
-        if !ok {
-            continue
-        }
-        
-        item := map[string]interface{}{}
-        
-        // FIX: Look for "aspectType" (CamelCase) coming from the Decoder
-        if val, ok := original["aspectType"]; ok {
-            item["aspect_type"] = val
-        } else if val, ok := original["aspect_type"]; ok {
-            // Fallback check
-            item["aspect_type"] = val
-        }
-        
-        // Handle 'data' Normalization
-        if dataVal, ok := original["data"]; ok {
-            if dataMap, ok := dataVal.(map[string]interface{}); ok {
-                // If it's a map, marshal it to a string
-                b, _ := json.Marshal(dataMap)
-                item["data"] = string(b)
-            } else if dataStr, ok := dataVal.(string); ok {
-                // If it's already a string, use it
-                item["data"] = dataStr
-            }
-        }
+	for _, raw := range l {
+		original, ok := raw.(map[string]interface{})
+		if !ok {
+			continue
+		}
 
-        transformed = append(transformed, item)
-    }
+		item := map[string]interface{}{}
 
-    // 2. Sorting Logic (Crucial for ImportStateVerify)
-    
-    // A. Default: Alphabetical Sort (Safe for Import / No Config)
-    sort.Slice(transformed, func(i, j int) bool {
-        typeA, _ := transformed[i]["aspect_type"].(string)
-        typeB, _ := transformed[j]["aspect_type"].(string)
-        return typeA < typeB
-    })
+		if val, ok := original["aspectType"]; ok {
+			item["aspect_type"] = val
+		} else if val, ok := original["aspect_type"]; ok {
+			item["aspect_type"] = val
+		}
 
-    // B. Attempt Config-based Sort (Only if Config exists)
-    configList := d.Get("aspects").([]interface{})
-    if len(configList) > 0 {
-        configData := []map[string]interface{}{}
-        for _, item := range configList {
-            configData = append(configData, item.(map[string]interface{}))
-        }
-        
-        sorted, err := tpgresource.SortMapsByConfigOrder(configData, transformed, "aspect_type")
-        if err == nil {
-            return sorted
-        }
-    }
+		if dataVal, ok := original["data"]; ok {
+			if dataMap, ok := dataVal.(map[string]interface{}); ok {
+				b, _ := json.Marshal(dataMap)
+				item["data"] = string(b)
+			} else if dataStr, ok := dataVal.(string); ok {
+				item["data"] = dataStr
+			}
+		}
 
-    return transformed
+		transformed = append(transformed, item)
+	}
+
+	sort.Slice(transformed, func(i, j int) bool {
+		typeA, _ := transformed[i]["aspect_type"].(string)
+		typeB, _ := transformed[j]["aspect_type"].(string)
+		return typeA < typeB
+	})
+
+	configList := d.Get("aspects").([]interface{})
+	if len(configList) > 0 {
+		configData := []map[string]interface{}{}
+		for _, item := range configList {
+			configData = append(configData, item.(map[string]interface{}))
+		}
+
+		sorted, err := tpgresource.SortMapsByConfigOrder(configData, transformed, "aspect_type")
+		if err == nil {
+			return sorted
+		}
+	}
+
+	return transformed
 }

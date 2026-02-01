@@ -2,13 +2,14 @@ package dataplex_test
 
 import (
 	"fmt"
+	"reflect"
+	"strings"
+	"testing"
+
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-provider-google/google/acctest"
 	"github.com/hashicorp/terraform-provider-google/google/envvar"
 	dataplex "github.com/hashicorp/terraform-provider-google/google/services/dataplex"
-	"reflect"
-	"strings"
-	"testing"
 )
 
 func TestNumberOfEntryLinkAspectsValidation(t *testing.T) {
@@ -226,13 +227,13 @@ func TestInverseTransformEntryLinkAspects(t *testing.T) {
 		errorMsg         string
 	}{
 		{"aspects key is absent", map[string]interface{}{"otherKey": "value"}, nil, true, false, ""},
-        {"aspects value is nil", map[string]interface{}{"aspects": nil}, nil, true, false, ""},
-        {"aspects is empty map", map[string]interface{}{"aspects": map[string]interface{}{}}, []interface{}{}, false, false, ""},
-        {"aspects with one entry", map[string]interface{}{"aspects": map[string]interface{}{"key1": map[string]interface{}{"data": map[string]interface{}{"foo": "bar"}}}}, []interface{}{map[string]interface{}{"aspectType": "key1", "data": "{\"foo\":\"bar\"}"}}, false, false, ""},
-        {"aspects is wrong type (not map)", map[string]interface{}{"aspects": "not a map"}, nil, false, true, "InverseTransformEntryLinkAspects: 'aspects' field is not a map[string]interface{}, got string"},
-        {"aspect value does not contain data", map[string]interface{}{"aspects": map[string]interface{}{"key1": map[string]interface{}{"wrong": "value"}}}, nil, false, true, "InverseTransformEntryLinkAspects: value for key 'key1' does not contain 'data' field"},
-        {"aspect value is not a map", map[string]interface{}{"aspects": map[string]interface{}{"key1": "not a map value"}}, nil, false, true, "InverseTransformEntryLinkAspects: value for key 'key1' is not a map[string]interface{}, got string"},
-        {"data in aspect value is not a map", map[string]interface{}{"aspects": map[string]interface{}{"key1": map[string]interface{}{"data": "not-a-map"}}}, nil, false, true, "InverseTransformEntryLinkAspects: 'data' field for key 'key1' is not a map[string]interface{}, got string"},
+		{"aspects value is nil", map[string]interface{}{"aspects": nil}, nil, true, false, ""},
+		{"aspects is empty map", map[string]interface{}{"aspects": map[string]interface{}{}}, []interface{}{}, false, false, ""},
+		{"aspects with one entry", map[string]interface{}{"aspects": map[string]interface{}{"key1": map[string]interface{}{"data": map[string]interface{}{"foo": "bar"}}}}, []interface{}{map[string]interface{}{"aspectType": "key1", "data": "{\"foo\":\"bar\"}"}}, false, false, ""},
+		{"aspects is wrong type (not map)", map[string]interface{}{"aspects": "not a map"}, nil, false, true, "InverseTransformEntryLinkAspects: 'aspects' field is not a map[string]interface{}, got string"},
+		{"aspect value does not contain data", map[string]interface{}{"aspects": map[string]interface{}{"key1": map[string]interface{}{"wrong": "value"}}}, nil, false, true, "InverseTransformEntryLinkAspects: value for key 'key1' does not contain 'data' field"},
+		{"aspect value is not a map", map[string]interface{}{"aspects": map[string]interface{}{"key1": "not a map value"}}, nil, false, true, "InverseTransformEntryLinkAspects: value for key 'key1' is not a map[string]interface{}, got string"},
+		{"data in aspect value is not a map", map[string]interface{}{"aspects": map[string]interface{}{"key1": map[string]interface{}{"data": "not-a-map"}}}, nil, false, true, "InverseTransformEntryLinkAspects: 'data' field for key 'key1' is not a map[string]interface{}, got string"},
 	}
 
 	for _, tc := range testCases {
@@ -306,17 +307,17 @@ func TestTransformEntryLinkAspects(t *testing.T) {
 		errorMsg         string
 	}{
 		{"aspects key is absent", map[string]interface{}{"otherKey": "value"}, nil, true, false, ""},
-        {"aspects value is nil", map[string]interface{}{"aspects": nil}, nil, true, false, ""},
-        {"aspects is empty slice", map[string]interface{}{"aspects": []interface{}{}}, map[string]interface{}{}, false, false, ""},
-        {"aspects with one item", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"aspectType": "key1", "data": map[string]interface{}{"foo": "bar"}}}}, map[string]interface{}{"key1": map[string]interface{}{"data": map[string]interface{}{"foo": "bar"}}}, false, false, ""},
-        {"aspects with multiple items", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"aspectType": "key1", "data": map[string]interface{}{"foo": "bar"}}, map[string]interface{}{"aspectType": "key2", "data": map[string]interface{}{"abc": "xyz"}}}}, map[string]interface{}{"key1": map[string]interface{}{"data": map[string]interface{}{"foo": "bar"}}, "key2": map[string]interface{}{"data": map[string]interface{}{"abc": "xyz"}}}, false, false, ""},
-        {"aspects with duplicate aspectType", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"aspectType": "key1", "data": map[string]interface{}{"foo": "bar"}}, map[string]interface{}{"aspectType": "key2", "data": map[string]interface{}{"abc": "xyz"}}, map[string]interface{}{"aspectType": "key1", "data": map[string]interface{}{"new": "baz"}}}}, map[string]interface{}{"key1": map[string]interface{}{"data": map[string]interface{}{"new": "baz"}}, "key2": map[string]interface{}{"data": map[string]interface{}{"abc": "xyz"}}}, false, false, ""},
-        {"aspects is wrong type (not slice)", map[string]interface{}{"aspects": "not a slice"}, nil, false, true, "TransformAspects: 'aspects' field is not a []interface{}, got string"},
-        {"item in slice is not a map", map[string]interface{}{"aspects": []interface{}{"not a map"}}, nil, false, true, "TransformEntryLinkAspects: item in 'aspects' slice at index 0 is not a map[string]interface{}, got string"},
-        {"item map missing aspectType", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"wrongKey": "k1", "data": map[string]interface{}{}}}}, nil, false, true, "TransformEntryLinkAspects: 'aspectType' not found in aspect item at index 0"},
-        {"aspectType is not a string", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"aspectType": 123, "data": map[string]interface{}{}}}}, nil, false, true, "TransformEntryLinkAspects: 'aspectType' in item at index 0 is not a string, got int"},
-        {"item map missing data", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"aspectType": "key1"}}}, nil, false, true, "TransformEntryLinkAspects: 'data' not found in aspect item at index 0"},
-        {"data is not a map", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"aspectType": "key1", "data": "not-a-map"}}}, nil, false, true, "TransformEntryLinkAspects: 'data' in item at index 0 is not a map[string]interface{}, got string"},
+		{"aspects value is nil", map[string]interface{}{"aspects": nil}, nil, true, false, ""},
+		{"aspects is empty slice", map[string]interface{}{"aspects": []interface{}{}}, map[string]interface{}{}, false, false, ""},
+		{"aspects with one item", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"aspectType": "key1", "data": map[string]interface{}{"foo": "bar"}}}}, map[string]interface{}{"key1": map[string]interface{}{"data": map[string]interface{}{"foo": "bar"}}}, false, false, ""},
+		{"aspects with multiple items", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"aspectType": "key1", "data": map[string]interface{}{"foo": "bar"}}, map[string]interface{}{"aspectType": "key2", "data": map[string]interface{}{"abc": "xyz"}}}}, map[string]interface{}{"key1": map[string]interface{}{"data": map[string]interface{}{"foo": "bar"}}, "key2": map[string]interface{}{"data": map[string]interface{}{"abc": "xyz"}}}, false, false, ""},
+		{"aspects with duplicate aspectType", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"aspectType": "key1", "data": map[string]interface{}{"foo": "bar"}}, map[string]interface{}{"aspectType": "key2", "data": map[string]interface{}{"abc": "xyz"}}, map[string]interface{}{"aspectType": "key1", "data": map[string]interface{}{"new": "baz"}}}}, map[string]interface{}{"key1": map[string]interface{}{"data": map[string]interface{}{"new": "baz"}}, "key2": map[string]interface{}{"data": map[string]interface{}{"abc": "xyz"}}}, false, false, ""},
+		{"aspects is wrong type (not slice)", map[string]interface{}{"aspects": "not a slice"}, nil, false, true, "TransformAspects: 'aspects' field is not a []interface{}, got string"},
+		{"item in slice is not a map", map[string]interface{}{"aspects": []interface{}{"not a map"}}, nil, false, true, "TransformEntryLinkAspects: item in 'aspects' slice at index 0 is not a map[string]interface{}, got string"},
+		{"item map missing aspectType", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"wrongKey": "k1", "data": map[string]interface{}{}}}}, nil, false, true, "TransformEntryLinkAspects: 'aspectType' not found in aspect item at index 0"},
+		{"aspectType is not a string", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"aspectType": 123, "data": map[string]interface{}{}}}}, nil, false, true, "TransformEntryLinkAspects: 'aspectType' in item at index 0 is not a string, got int"},
+		{"item map missing data", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"aspectType": "key1"}}}, nil, false, true, "TransformEntryLinkAspects: 'data' not found in aspect item at index 0"},
+		{"data is not a map", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"aspectType": "key1", "data": "not-a-map"}}}, nil, false, true, "TransformEntryLinkAspects: 'data' in item at index 0 is not a map[string]interface{}, got string"},
 	}
 
 	for _, tc := range testCases {
@@ -375,7 +376,7 @@ func TestTransformEntryLinkAspects(t *testing.T) {
 
 func TestCompareJsonData(t *testing.T) {
 	key := "some_key"
-	
+
 	testCases := []struct {
 		name     string
 		old      string
@@ -387,7 +388,7 @@ func TestCompareJsonData(t *testing.T) {
 		{"different whitespace", `{ "a" :   1 }`, `{"a":1}`, true},
 		{"totally different content", `{"a": "b"}`, `{"x": "y"}`, false},
 		{"same keys different values", `{"a": 1}`, `{"a": 2}`, false},
-		
+
 		// The "Double Encoding" cases (Critical for Permadiff fix)
 		{"double encoded state vs single encoded config", `"{\"joins\":[],\"userManaged\":true}"`, `{"joins":[],"userManaged":true}`, true},
 		{"double encoded state vs double encoded config", `"{\"a\":1}"`, `"{\"a\":1}"`, true},
@@ -415,14 +416,14 @@ func TestAccDataplexEntryLink_update(t *testing.T) {
 
 	context := map[string]interface{}{
 		"project_number": envvar.GetTestProjectNumberFromEnv(),
-    "project_id":     envvar.GetTestProjectFromEnv(),
+		"project_id":     envvar.GetTestProjectFromEnv(),
 		"random_suffix":  acctest.RandString(t, 10),
 	}
 
 	acctest.VcrTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.AccTestPreCheck(t) },
 		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories(t),
-    ExternalProviders: map[string]resource.ExternalProvider{
+		ExternalProviders: map[string]resource.ExternalProvider{
 			"time": {},
 		},
 		Steps: []resource.TestStep{
@@ -452,6 +453,7 @@ resource "google_dataplex_entry_group" "entry-group-basic" {
   entry_group_id = "tf-test-entry-group%{random_suffix}"
   project = "%{project_number}"
 }
+
 resource "google_dataplex_entry" "source" {
   location = "us-central1"
   entry_group_id = google_dataplex_entry_group.entry-group-basic.entry_group_id
@@ -459,15 +461,18 @@ resource "google_dataplex_entry" "source" {
   entry_type = google_dataplex_entry_type.entry-type-basic.name
   project = "%{project_number}"
 }
+
 resource "google_dataplex_entry_type" "entry-type-basic" {
   entry_type_id = "tf-test-entry-type%{random_suffix}"
   location = "us-central1"
   project = "%{project_number}"
 }
+
 resource "google_dataplex_glossary" "term_test_id_full" {
   glossary_id = "tf-test-glossary%{random_suffix}"
   location    = "us-central1"
 }
+
 resource "google_dataplex_glossary_term" "term_test_id_full" {
   parent = "projects/${google_dataplex_glossary.term_test_id_full.project}/locations/us-central1/glossaries/${google_dataplex_glossary.term_test_id_full.glossary_id}"
   glossary_id = google_dataplex_glossary.term_test_id_full.glossary_id
@@ -477,6 +482,7 @@ resource "google_dataplex_glossary_term" "term_test_id_full" {
   display_name = "terraform term"
   description = "term created by Terraform"
 }
+
 resource "google_dataplex_entry_link" "basic_entry_link" {
   project = "%{project_number}"
   location = "us-central1"
@@ -492,6 +498,7 @@ resource "google_dataplex_entry_link" "basic_entry_link" {
 	type = "TARGET"
   }
 }
+
 resource "google_bigquery_dataset" "bq_dataset" {
   dataset_id = "tf_test_dataset_%{random_suffix}"
   project    = "%{project_number}"
@@ -531,6 +538,7 @@ resource "google_bigquery_table" "table2" {
 ]
 EOF
 }
+
 resource "time_sleep" "wait_120s_for_dataplex_ingestion" {
   depends_on = [
     google_bigquery_table.table1,
@@ -538,6 +546,7 @@ resource "time_sleep" "wait_120s_for_dataplex_ingestion" {
   ]
   create_duration = "120s"
 }
+
 resource "google_dataplex_entry_link" "full_entry_link" {
   depends_on = [time_sleep.wait_120s_for_dataplex_ingestion]
   project = "%{project_number}"

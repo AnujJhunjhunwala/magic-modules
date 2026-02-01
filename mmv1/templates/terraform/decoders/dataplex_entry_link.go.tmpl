@@ -1,5 +1,6 @@
-// templates/terraform/decoders/dataplex_entry_link.go.tmpl
-
+// This decoder validates the number of aspects, filters the API response to include only 
+// aspects defined in the configuration (preserving all aspects during import/empty config), 
+// and transforms the aspect map into a slice.
 aspects := res["aspects"]
 if aspects != nil {
 	_, errors := NumberOfEntryLinkAspectsValidation(aspects, "aspects")
@@ -8,7 +9,6 @@ if aspects != nil {
 	}
 }
 
-// 1. Build the set of keys from Config (if valid)
 aspectTypeKeysOfInterest := make(map[string]struct{})
 var err error
 
@@ -29,18 +29,13 @@ if d.HasChange("aspects") {
 	}
 }
 
-// 2. Only Filter if we actually have keys of interest.
-// If the set is empty, it means either:
-//   a) We are running an Import (so we want ALL aspects to verify state)
-//   b) The user Config is empty (so we want ALL aspects so Terraform can plan to destroy them)
 if len(aspectTypeKeysOfInterest) > 0 {
-    err = FilterAspects(aspectTypeKeysOfInterest, res)
-    if err != nil {
-        return nil, err
-    }
+	err = FilterAspects(aspectTypeKeysOfInterest, res)
+	if err != nil {
+		return nil, err
+	}
 }
 
-// 3. Always transform the map to a list
 err = InverseTransformEntryLinkAspects(res)
 if err != nil {
 	return nil, err
