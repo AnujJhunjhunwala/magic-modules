@@ -1,5 +1,15 @@
-// CreateEntryLink supports exactly 1 required aspect. 
-const maxEntryLinkAspectNumber = 1
+const (
+	// CreateEntryLink supports exactly 1 required aspect.
+	maxEntryLinkAspectNumber = 1
+	// firstPartyTypesProjectNumber is the project number for Dataplex system ingested resources.
+	firstPartyTypesProjectNumber = "655216118709"
+)
+
+var (
+	entryLinkProjectNumberRegex = regexp.MustCompile(`^projects\/[1-9]\d*\/.+$`)
+	entryLinkAspectTypeProjectNumberRegex = regexp.MustCompile(fmt.Sprintf(`^%s\.global\..+$`, firstPartyTypesProjectNumber))
+)
+
 
 // NumberOfEntryLinkAspectsValidation ensures that only single required aspect is attached to an entry link.
 func NumberOfEntryLinkAspectsValidation(i interface{}, k string) (warnings []string, errors []error) {
@@ -31,8 +41,7 @@ func EntryLinkProjectNumberValidation(i interface{}, k string) (warnings []strin
 		return warnings, errors
 	}
 
-	var projectNumberRegex = regexp.MustCompile(`^projects\/[1-9]\d*\/.+$`)
-	if !projectNumberRegex.MatchString(v) {
+	if !entryLinkProjectNumberRegex.MatchString(v) {
 		errors = append(errors, fmt.Errorf(
 			"field %q has an invalid format: %q. Expected format: 'projects/<project-number>/<anything>'. Please note that project IDs are not supported.",
 			k, v,
@@ -51,12 +60,10 @@ func EntryLinkAspectTypeProjectNumberValidation(i interface{}, k string) (warnin
 		return warnings, errors
 	}
 
-	var numberDotAnythingRegex = regexp.MustCompile(`655216118709\.global\..+$`)
-
-	if !numberDotAnythingRegex.MatchString(v) {
+	if !entryLinkAspectTypeProjectNumberRegex.MatchString(v) {
 		errors = append(errors, fmt.Errorf(
-			"field %q has an invalid format: %q. Expected format: '655216118709.global.<first-party-entry-link-aspect-name>'. Please note that project IDs are not supported.",
-			k, v,
+			"field %q has an invalid format: %q. Expected format: '%s.global.<first-party-entry-link-aspect-name>'. Please note that project IDs are not supported.",
+			k, v, firstPartyTypesProjectNumber,
 		))
 	}
 
