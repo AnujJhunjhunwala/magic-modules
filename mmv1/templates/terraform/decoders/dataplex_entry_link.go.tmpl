@@ -3,9 +3,14 @@
 // and transforms the aspect map into a slice.
 aspects := res["aspects"]
 if aspects != nil {
-	_, errors := NumberOfEntryLinkAspectsValidation(aspects, "aspects")
-	if len(errors) > 0 {
-		return nil, errors[0]
+	_, errs := NumberOfEntryLinkAspectsValidation(aspects, "aspects")
+
+	if len(errs) > 0 {
+		var msgs []string
+		for _, e := range errs {
+			msgs = append(msgs, e.Error())
+		}
+		return nil, fmt.Errorf("aspects validation failed: %s", strings.Join(msgs, "; "))
 	}
 }
 
