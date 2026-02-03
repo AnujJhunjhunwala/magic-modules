@@ -1,10 +1,15 @@
 // The yaml file does not allow validation for Array fields.
-// Therefore we add validation as a part of the encoding proecess.
+// Therefore we add validation as a part of the encoding process.
 aspects := obj["aspects"]
 if aspects != nil {
-	_, errors := NumberOfEntryLinkAspectsValidation(aspects, "aspects")
-	if len(errors) > 0 {
-		return nil, errors[0]
+	_, errs := NumberOfEntryLinkAspectsValidation(aspects, "aspects")
+
+	if len(errs) > 0 {
+		var msgs []string
+		for _, e := range errs {
+			msgs = append(msgs, e.Error())
+		}
+		return nil, fmt.Errorf("aspects validation failed: %s", strings.Join(msgs, "; "))
 	}
 }
 
