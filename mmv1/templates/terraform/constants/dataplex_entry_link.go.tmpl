@@ -42,9 +42,9 @@ func EntryLinkProjectNumberValidation(i interface{}, k string) (warnings []strin
 	return warnings, errors
 }
 
-// EntryLinkAspectProjectNumberValidation checks if the input string conforms to the pattern:
+// EntryLinkAspectTypeProjectNumberValidation checks if the input string conforms to the pattern:
 // "655216118709.global.<first-party-entry-link-aspect-name>"
-func EntryLinkAspectProjectNumberValidation(i interface{}, k string) (warnings []string, errors []error) {
+func EntryLinkAspectTypeProjectNumberValidation(i interface{}, k string) (warnings []string, errors []error) {
 	v, ok := i.(string)
 	if !ok {
 		errors = append(errors, fmt.Errorf("expected type of field %q to be string, but got %T", k, i))

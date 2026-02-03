@@ -131,7 +131,7 @@ properties:
             The resource name of the type used to create this Aspect.
           required: true
           validation:
-            function: EntryLinkAspectProjectNumberValidation
+            function: EntryLinkAspectTypeProjectNumberValidation
         - name: 'data'
           type: String
           required: true

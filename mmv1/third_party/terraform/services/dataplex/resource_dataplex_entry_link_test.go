@@ -124,7 +124,7 @@ func TestEntryLinkProjectNumberValidation(t *testing.T) {
 	}
 }
 
-func TestEntryLinkAspectProjectNumberValidation(t *testing.T) {
+func TestEntryLinkAspectTypeProjectNumberValidation(t *testing.T) {
 	fieldName := "some_field"
 	testCases := []struct {
 		name        string
@@ -146,11 +146,11 @@ func TestEntryLinkAspectProjectNumberValidation(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, errors := dataplex.EntryLinkAspectProjectNumberValidation(tc.input, fieldName)
+			_, errors := dataplex.EntryLinkAspectTypeProjectNumberValidation(tc.input, fieldName)
 			hasError := len(errors) > 0
 
 			if hasError != tc.expectError {
-				t.Fatalf("%s: EntryLinkAspectProjectNumberValidation() error expectation mismatch: got error = %v (%v), want error = %v", tc.name, hasError, errors, tc.expectError)
+				t.Fatalf("%s: EntryLinkAspectTypeProjectNumberValidation() error expectation mismatch: got error = %v (%v), want error = %v", tc.name, hasError, errors, tc.expectError)
 			}
 
 			if tc.expectError && tc.errorMsg != "" {
@@ -162,7 +162,7 @@ func TestEntryLinkAspectProjectNumberValidation(t *testing.T) {
 					}
 				}
 				if !found {
-					t.Errorf("%s: EntryLinkAspectProjectNumberValidation() expected error containing %q, but got: %v", tc.name, tc.errorMsg, errors)
+					t.Errorf("%s: EntryLinkAspectTypeProjectNumberValidation() expected error containing %q, but got: %v", tc.name, tc.errorMsg, errors)
 				}
 			}
 		})
