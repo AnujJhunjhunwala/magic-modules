@@ -21,6 +21,7 @@ func flatten{{$.GetPrefix}}{{$.TitlelizeProperty}}(v interface{}, d *schema.Reso
 
 		item := map[string]interface{}{}
 
+		// Normalize key names
 		if val, ok := original["aspectType"]; ok {
 			item["aspect_type"] = val
 		} else if val, ok := original["aspect_type"]; ok {
@@ -29,7 +30,10 @@ func flatten{{$.GetPrefix}}{{$.TitlelizeProperty}}(v interface{}, d *schema.Reso
 
 		if dataVal, ok := original["data"]; ok {
 			if dataMap, ok := dataVal.(map[string]interface{}); ok {
-				b, _ := json.Marshal(dataMap)
+				b, err := json.Marshal(dataMap)
+				if err != nil {
+					log.Printf("[ERROR] Failed to marshal 'data' aspect: %s", err)
+				}
 				item["data"] = string(b)
 			} else if dataStr, ok := dataVal.(string); ok {
 				item["data"] = dataStr
@@ -39,24 +43,28 @@ func flatten{{$.GetPrefix}}{{$.TitlelizeProperty}}(v interface{}, d *schema.Reso
 		transformed = append(transformed, item)
 	}
 
+	// Stable alphabetical sort by aspect_type for imports
 	sort.Slice(transformed, func(i, j int) bool {
 		typeA, _ := transformed[i]["aspect_type"].(string)
 		typeB, _ := transformed[j]["aspect_type"].(string)
 		return typeA < typeB
 	})
 
-	configList := d.Get("aspects").([]interface{})
-	if len(configList) > 0 {
-		configData := []map[string]interface{}{}
-		for _, item := range configList {
-			configData = append(configData, item.(map[string]interface{}))
-		}
-
-		sorted, err := tpgresource.SortMapsByConfigOrder(configData, transformed, "aspect_type")
-		if err == nil {
-			return sorted
+	// Reorder based on user's .tf configuration to avoid state jitter
+	if configList, ok := d.GetOk("aspects"); ok {
+		rawList := configList.([]interface{})
+		if len(rawList) > 0 {
+			configData := make([]map[string]interface{}, 0, len(rawList))
+			for _, item := range rawList {
+				if m, ok := item.(map[string]interface{}); ok {
+					configData = append(configData, m)
+				}
+			}
+			sorted, err := tpgresource.SortMapsByConfigOrder(configData, transformed, "aspect_type")
+			if err == nil {
+				return sorted
+			}
 		}
 	}
-
 	return transformed
 }
