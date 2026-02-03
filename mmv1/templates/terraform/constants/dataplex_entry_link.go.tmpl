@@ -17,7 +17,7 @@ func NumberOfEntryLinkAspectsValidation(i interface{}, k string) (warnings []str
 	m, isMap := i.(map[string]interface{})
 
 	if !isSlice && !isMap {
-		errors = append(errors, fmt.Errorf("expected type of field %q to be array, but got %T", k, i))
+		errors = append(errors, fmt.Errorf("expected type of field %q to be array or map, but got %T", k, i))
 		return warnings, errors
 	}
 
