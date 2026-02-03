@@ -1,7 +1,7 @@
 const (
-	// CreateEntryLink supports exactly 1 required aspect.
+	// CreateEntryLink supports only 1 required aspect.
 	maxEntryLinkAspectNumber = 1
-	// firstPartyTypesProjectNumber is the project number for Dataplex system ingested resources.
+	// firstPartyTypesProjectNumber is the project number for Dataplex managed types.
 	firstPartyTypesProjectNumber = "655216118709"
 )
 
@@ -158,7 +158,7 @@ func TransformEntryLinkAspects(obj map[string]interface{}) error {
 
     originalSlice, ok := aspectsRaw.([]interface{})
     if !ok {
-        return fmt.Errorf("TransformAspects: 'aspects' field is not a []interface{}, got %T", aspectsRaw)
+        return fmt.Errorf("TransformEntryLinkAspects: 'aspects' field is not a []interface{}, got %T", aspectsRaw)
     }
 
     newMap := make(map[string]interface{}, len(originalSlice))

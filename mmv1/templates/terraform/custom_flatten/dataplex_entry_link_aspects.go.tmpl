@@ -29,17 +29,17 @@ func flatten{{$.GetPrefix}}{{$.TitlelizeProperty}}(v interface{}, d *schema.Reso
 		}
 
 		if dataVal, ok := original["data"]; ok {
-			if dataMap, ok := dataVal.(map[string]interface{}); ok {
-				b, err := json.Marshal(dataMap)
+			switch v := dataVal.(type) {
+			case map[string]interface{}:
+				b, err := json.Marshal(v)
 				if err != nil {
 					log.Printf("[ERROR] Failed to marshal 'data' aspect: %s", err)
 				}
 				item["data"] = string(b)
-			} else if dataStr, ok := dataVal.(string); ok {
-				item["data"] = dataStr
+			case string:
+				item["data"] = v
 			}
 		}
-
 		transformed = append(transformed, item)
 	}
 
