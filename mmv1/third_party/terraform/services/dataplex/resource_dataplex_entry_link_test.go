@@ -423,9 +423,6 @@ func TestAccDataplexEntryLink_update(t *testing.T) {
 	acctest.VcrTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.AccTestPreCheck(t) },
 		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories(t),
-		ExternalProviders: map[string]resource.ExternalProvider{
-			"time": {},
-		},
 		Steps: []resource.TestStep{
 			{
 				Config: testAccDataplexEntryLink_dataplexEntryLinkUpdate(context),
@@ -539,16 +536,7 @@ resource "google_bigquery_table" "table2" {
 EOF
 }
 
-resource "time_sleep" "wait_120s_for_dataplex_ingestion" {
-  depends_on = [
-    google_bigquery_table.table1,
-    google_bigquery_table.table2,
-  ]
-  create_duration = "120s"
-}
-
 resource "google_dataplex_entry_link" "full_entry_link" {
-  depends_on = [time_sleep.wait_120s_for_dataplex_ingestion]
   project = "%{project_number}"
   location = "us-central1"
   entry_group_id = "@bigquery"
