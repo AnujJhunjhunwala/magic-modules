@@ -411,7 +411,7 @@ func TestCompareJsonData(t *testing.T) {
 	}
 }
 
-func TestAccDataplexEntryLink_update(t *testing.T) {
+func TestAccDataplexEntryLink_dataplexEntryLinkUpdate(t *testing.T) {
 	t.Parallel()
 
 	context := map[string]interface{}{
@@ -425,7 +425,7 @@ func TestAccDataplexEntryLink_update(t *testing.T) {
 		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories(t),
 		Steps: []resource.TestStep{
 			{
-				Config: testAccDataplexEntryLink_dataplexEntryLinkUpdate(context),
+				Config: testAccDataplexEntryLink_dataplexEntryLinkUpdatePrepare(context),
 			},
 			{
 				ResourceName:            "google_dataplex_entry_link.basic_entry_link",
@@ -434,7 +434,7 @@ func TestAccDataplexEntryLink_update(t *testing.T) {
 				ImportStateVerifyIgnore: []string{"entry_group_id", "entry_link_id", "location"},
 			},
 			{
-				ResourceName:            "google_dataplex_entry_link.full_entry_link",
+				ResourceName:            "google_dataplex_entry_link.full_entry_link_with_aspect",
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: []string{"entry_group_id", "entry_link_id", "location"},
@@ -443,7 +443,7 @@ func TestAccDataplexEntryLink_update(t *testing.T) {
 	})
 }
 
-func testAccDataplexEntryLink_dataplexEntryLinkUpdate(context map[string]interface{}) string {
+func testAccDataplexEntryLink_dataplexEntryLinkUpdatePrepare(context map[string]interface{}) string {
 	return acctest.Nprintf(`
 resource "google_dataplex_entry_group" "entry-group-basic" {
   location = "us-central1"
@@ -536,7 +536,7 @@ resource "google_bigquery_table" "table2" {
 EOF
 }
 
-resource "google_dataplex_entry_link" "full_entry_link" {
+resource "google_dataplex_entry_link" "full_entry_link_with_aspect" {
   project = "%{project_number}"
   location = "us-central1"
   entry_group_id = "@bigquery"
