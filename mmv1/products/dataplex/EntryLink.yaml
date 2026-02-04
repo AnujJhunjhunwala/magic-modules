@@ -50,6 +50,15 @@ examples:
       entry_link_name: 'my_entry_link_full'
     test_env_vars:
       project_number: 'PROJECT_NUMBER'
+  - name: 'dataplex_entry_link_with_aspect'
+    primary_resource_id: 'full_entry_link_with_aspect'
+    primary_resource_name: 'fmt.Sprintf("tf-test-entry-link-full-with-aspect%s", context["random_suffix"])'
+    vars:
+      entry_link_name: 'my_entry_link_full_with_aspect'
+    test_env_vars:
+      project_number: 'PROJECT_NUMBER'
+      project_id: 'PROJECT_NAME'
+  
 parameters:
   - name: 'entryGroupId'
     type: String
