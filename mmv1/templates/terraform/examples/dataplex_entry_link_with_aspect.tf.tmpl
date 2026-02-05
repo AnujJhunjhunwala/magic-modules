@@ -49,10 +49,12 @@ resource "google_dataplex_entry_link" "full_entry_link_with_aspect" {
     type = ""
   }
   aspects {
-    aspect_type = "655216118709.global.schema-join"
-    data = jsonencode({
-      joins       = []
-      userManaged = true
-    })
+    aspect_key = "655216118709.global.schema-join"
+    aspect {
+      data = jsonencode({
+        joins       = []
+        userManaged = true
+      })
+    }
   }
 }

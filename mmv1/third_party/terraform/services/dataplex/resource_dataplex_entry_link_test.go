@@ -1,7 +1,6 @@
 package dataplex_test
 
 import (
-	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -11,70 +10,6 @@ import (
 	"github.com/hashicorp/terraform-provider-google/google/envvar"
 	dataplex "github.com/hashicorp/terraform-provider-google/google/services/dataplex"
 )
-
-func TestNumberOfEntryLinkAspectsValidation(t *testing.T) {
-	fieldName := "aspects"
-	numbers_2 := make([]interface{}, 2)
-	for i := 0; i < 2; i++ {
-		numbers_2[i] = i
-	}
-	numbers_1 := make([]interface{}, 1)
-	for i := 0; i < 1; i++ {
-		numbers_1[i] = i
-	}
-	numbers_empty := make([]interface{}, 0)
-	map_2 := make(map[string]interface{}, 2)
-	for i := 0; i < 2; i++ {
-		key := fmt.Sprintf("key%d", i)
-		map_2[key] = i
-	}
-	map_1 := make(map[string]interface{}, 1)
-	for i := 0; i < 1; i++ {
-		key := fmt.Sprintf("key%d", i)
-		map_1[key] = i
-	}
-	map_empty := make(map[string]interface{}, 0)
-
-	testCases := []struct {
-		name        string
-		input       interface{}
-		expectError bool
-		errorMsg    string
-	}{
-		{"too many aspects in a slice", numbers_2, true, "The number of required aspects can be atmost 1."},
-		{"max number of aspects in a slice", numbers_1, false, ""},
-		{"min number of aspects in a slice", numbers_empty, false, ""},
-		{"too many aspects in a map", map_2, true, "The number of required aspects can be atmost 1."},
-		{"max number of aspects in a map", map_1, false, ""},
-		{"min number of aspects in a map", map_empty, false, ""},
-		{"a string is not a valid input", "some-random-string", true, "to be array"},
-		{"nil is not a valid input", nil, true, "to be array"},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			_, errors := dataplex.NumberOfEntryLinkAspectsValidation(tc.input, fieldName)
-			hasError := len(errors) > 0
-
-			if hasError != tc.expectError {
-				t.Fatalf("%s: NumberOfEntryLinkAspectsValidation() error expectation mismatch: got error = %v (%v), want error = %v", tc.name, hasError, errors, tc.expectError)
-			}
-
-			if tc.expectError && tc.errorMsg != "" {
-				found := false
-				for _, err := range errors {
-					if strings.Contains(err.Error(), tc.errorMsg) { // Check if error message contains the expected substring
-						found = true
-						break
-					}
-				}
-				if !found {
-					t.Errorf("%s: NumberOfEntryLinkAspectsValidation() expected error containing %q, but got: %v", tc.name, tc.errorMsg, errors)
-				}
-			}
-		})
-	}
-}
 
 func TestEntryLinkProjectNumberValidation(t *testing.T) {
 	fieldName := "some_field"
@@ -124,46 +59,74 @@ func TestEntryLinkProjectNumberValidation(t *testing.T) {
 	}
 }
 
-func TestEntryLinkAspectTypeProjectNumberValidation(t *testing.T) {
-	fieldName := "some_field"
+func TestFilterEntryLinkAspects(t *testing.T) {
 	testCases := []struct {
-		name        string
-		input       interface{}
-		expectError bool
-		errorMsg    string
+		name            string
+		aspectKeySet    map[string]struct{}
+		resInput        map[string]interface{}
+		expectedAspects map[string]interface{}
+		expectError     bool
+		errorMsg        string
 	}{
-		{"valid input", "655216118709.global.some-one-p-aspect", false, ""},
-		{"valid input minimal", "655216118709.global.a", false, ""},
-		{"invalid input trailing dot only", "655216118709.global.", true, "has an invalid format"},
-		{"invalid type - int", 456, true, `to be string, but got int`},
-		{"invalid type - nil", nil, true, `to be string, but got <nil>`},
-		{"invalid format - missing project number", ".global.some-one-p-aspect", true, "has an invalid format"},
-		{"invalid format - wrong project number", "655123118709.global.some-one-p-aspect", true, "has an invalid format"},
-		{"invalid format - missing dot", "655216118709globalsome-one-p-aspect", true, "has an invalid format"},
-		{"invalid format - project id instead of number", "one-p-aspect-project.global.some-one-p-aspect", true, "has an invalid format"},
-		{"invalid format - empty string", "", true, "has an invalid format"},
+		{"aspects key is absent", map[string]struct{}{"keep": {}}, map[string]interface{}{"otherKey": "value"}, nil, false, ""},
+		{"aspects value is nil", map[string]struct{}{"keep": {}}, map[string]interface{}{"aspects": nil}, nil, false, ""},
+		{"empty aspectKeySet", map[string]struct{}{}, map[string]interface{}{"aspects": map[string]interface{}{"one": map[string]interface{}{"data": 1}, "two": map[string]interface{}{"data": 2}}}, map[string]interface{}{}, false, ""},
+		{"keep all aspects", map[string]struct{}{"one": {}, "two": {}}, map[string]interface{}{"aspects": map[string]interface{}{"one": map[string]interface{}{"data": 1}, "two": map[string]interface{}{"data": 2}}}, map[string]interface{}{"one": map[string]interface{}{"data": 1}, "two": map[string]interface{}{"data": 2}}, false, ""},
+		{"keep some aspects", map[string]struct{}{"two": {}, "three_not_present": {}}, map[string]interface{}{"aspects": map[string]interface{}{"one": map[string]interface{}{"data": 1}, "two": map[string]interface{}{"data": 2}}}, map[string]interface{}{"two": map[string]interface{}{"data": 2}}, false, ""},
+		{"input aspects map is empty", map[string]struct{}{"keep": {}}, map[string]interface{}{"aspects": map[string]interface{}{}}, map[string]interface{}{}, false, ""},
+		{"aspects is wrong type", map[string]struct{}{"keep": {}}, map[string]interface{}{"aspects": "not a map"}, nil, true, "FilterEntryLinkAspects: 'aspects' field is not a map[string]interface{}, got string"},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, errors := dataplex.EntryLinkAspectTypeProjectNumberValidation(tc.input, fieldName)
-			hasError := len(errors) > 0
+			resCopy := deepCopyMap(tc.resInput)
+			originalAspectsBeforeCall := deepCopyValue(resCopy["aspects"])
 
-			if hasError != tc.expectError {
-				t.Fatalf("%s: EntryLinkAspectTypeProjectNumberValidation() error expectation mismatch: got error = %v (%v), want error = %v", tc.name, hasError, errors, tc.expectError)
+			err := dataplex.FilterEntryLinkAspects(tc.aspectKeySet, resCopy)
+
+			if tc.expectError {
+				if err == nil {
+					t.Fatalf("%s: Expected an error, but got nil", tc.name)
+				}
+				if tc.errorMsg != "" && !strings.Contains(err.Error(), tc.errorMsg) {
+					t.Errorf("%s: Expected error message containing %q, got %q", tc.name, tc.errorMsg, err.Error())
+				}
+				if !reflect.DeepEqual(resCopy["aspects"], originalAspectsBeforeCall) {
+					t.Errorf("%s: resCopy['aspects'] was modified during error case.\nBefore: %#v\nAfter: %#v", tc.name, originalAspectsBeforeCall, resCopy["aspects"])
+				}
+				return
 			}
 
-			if tc.expectError && tc.errorMsg != "" {
-				found := false
-				for _, err := range errors {
-					if strings.Contains(err.Error(), tc.errorMsg) { // Check if error message contains the expected substring
-						found = true
-						break
+			if err != nil {
+				t.Fatalf("%s: Did not expect an error, but got: %v", tc.name, err)
+			}
+
+			actualAspectsRaw, aspectsKeyExists := resCopy["aspects"]
+
+			if tc.expectedAspects == nil {
+				if aspectsKeyExists && actualAspectsRaw != nil {
+					if tc.name == "aspects key is absent" {
+						if aspectsKeyExists {
+							t.Errorf("%s: Expected 'aspects' key to be absent, but it exists with value: %v", tc.name, actualAspectsRaw)
+						}
+					} else {
+						t.Errorf("%s: Expected 'aspects' value to be nil, but got: %v", tc.name, actualAspectsRaw)
 					}
 				}
-				if !found {
-					t.Errorf("%s: EntryLinkAspectTypeProjectNumberValidation() expected error containing %q, but got: %v", tc.name, tc.errorMsg, errors)
-				}
+				return
+			}
+
+			if !aspectsKeyExists {
+				t.Fatalf("%s: Expected 'aspects' key to exist, but it was absent. Expected value: %#v", tc.name, tc.expectedAspects)
+			}
+
+			actualAspects, ok := actualAspectsRaw.(map[string]interface{})
+			if !ok {
+				t.Fatalf("%s: Expected 'aspects' to be a map[string]interface{}, but got %T. Value: %#v", tc.name, actualAspectsRaw, actualAspectsRaw)
+			}
+
+			if !reflect.DeepEqual(actualAspects, tc.expectedAspects) {
+				t.Errorf("%s: FilterEntryLinkAspects() result mismatch:\ngot:  %#v\nwant: %#v", tc.name, actualAspects, tc.expectedAspects)
 			}
 		})
 	}
@@ -178,15 +141,15 @@ func TestAddEntryLinkAspectsToSet(t *testing.T) {
 		expectError  bool
 		errorMsg     string
 	}{
-		{"add to empty set", map[string]struct{}{}, []interface{}{map[string]interface{}{"aspect_type": "key1"}, map[string]interface{}{"aspect_type": "key2"}}, map[string]struct{}{"key1": {}, "key2": {}}, false, ""},
-		{"add to existing set", map[string]struct{}{"existing": {}}, []interface{}{map[string]interface{}{"aspect_type": "key1"}}, map[string]struct{}{"existing": {}, "key1": {}}, false, ""},
-		{"add duplicate keys", map[string]struct{}{}, []interface{}{map[string]interface{}{"aspect_type": "key1"}, map[string]interface{}{"aspect_type": "key1"}, map[string]interface{}{"aspect_type": "key2"}}, map[string]struct{}{"key1": {}, "key2": {}}, false, ""},
+		{"add to empty set", map[string]struct{}{}, []interface{}{map[string]interface{}{"aspect_key": "key1"}, map[string]interface{}{"aspect_key": "key2"}}, map[string]struct{}{"key1": {}, "key2": {}}, false, ""},
+		{"add to existing set", map[string]struct{}{"existing": {}}, []interface{}{map[string]interface{}{"aspect_key": "key1"}}, map[string]struct{}{"existing": {}, "key1": {}}, false, ""},
+		{"add duplicate keys", map[string]struct{}{}, []interface{}{map[string]interface{}{"aspect_key": "key1"}, map[string]interface{}{"aspect_key": "key1"}, map[string]interface{}{"aspect_key": "key2"}}, map[string]struct{}{"key1": {}, "key2": {}}, false, ""},
 		{"input aspects is empty slice", map[string]struct{}{"existing": {}}, []interface{}{}, map[string]struct{}{"existing": {}}, false, ""},
 		{"input aspects is nil", map[string]struct{}{"original": {}}, nil, map[string]struct{}{"original": {}}, false, ""},
 		{"input aspects is wrong type", map[string]struct{}{}, "not a slice", map[string]struct{}{}, true, "AddEntryLinkAspectsToSet: input 'aspects' is not a []interface{}, got string"},
 		{"item in slice is not a map", map[string]struct{}{}, []interface{}{"not a map"}, map[string]struct{}{}, true, "AddEntryLinkAspectsToSet: item at index 0 is not a map[string]interface{}, got string"},
-		{"item map missing aspect_type", map[string]struct{}{}, []interface{}{map[string]interface{}{"wrong_key": "key1"}}, map[string]struct{}{}, true, "AddEntryLinkAspectsToSet: 'aspect_type' not found in aspect item at index 0"},
-		{"aspect_type is not a string", map[string]struct{}{}, []interface{}{map[string]interface{}{"aspect_type": 123}}, map[string]struct{}{}, true, "AddEntryLinkAspectsToSet: 'aspect_type' in item at index 0 is not a string, got int"},
+		{"item map missing aspect_key", map[string]struct{}{}, []interface{}{map[string]interface{}{"wrong_key": "key1"}}, map[string]struct{}{}, true, "AddEntryLinkAspectsToSet: 'aspect_key' not found in aspect item at index 0"},
+		{"aspect_key is not a string", map[string]struct{}{}, []interface{}{map[string]interface{}{"aspect_key": 123}}, map[string]struct{}{}, true, "AddEntryLinkAspectsToSet: 'aspect_key' in item at index 0 is not a string, got int"},
 	}
 
 	for _, tc := range testCases {
@@ -229,11 +192,10 @@ func TestInverseTransformEntryLinkAspects(t *testing.T) {
 		{"aspects key is absent", map[string]interface{}{"otherKey": "value"}, nil, true, false, ""},
 		{"aspects value is nil", map[string]interface{}{"aspects": nil}, nil, true, false, ""},
 		{"aspects is empty map", map[string]interface{}{"aspects": map[string]interface{}{}}, []interface{}{}, false, false, ""},
-		{"aspects with one entry", map[string]interface{}{"aspects": map[string]interface{}{"key1": map[string]interface{}{"data": map[string]interface{}{"foo": "bar"}}}}, []interface{}{map[string]interface{}{"aspectType": "key1", "data": "{\"foo\":\"bar\"}"}}, false, false, ""},
+		{"aspects with one entry", map[string]interface{}{"aspects": map[string]interface{}{"key1": map[string]interface{}{"data": "value1"}}}, []interface{}{map[string]interface{}{"aspectKey": "key1", "aspect": map[string]interface{}{"data": "value1"}}}, false, false, ""},
+		{"aspects with multiple entries", map[string]interface{}{"aspects": map[string]interface{}{"key2": map[string]interface{}{"data": "value2"}, "key1": map[string]interface{}{"data": "value1"}}}, []interface{}{map[string]interface{}{"aspectKey": "key1", "aspect": map[string]interface{}{"data": "value1"}}, map[string]interface{}{"aspectKey": "key2", "aspect": map[string]interface{}{"data": "value2"}}}, false, false, ""},
 		{"aspects is wrong type (not map)", map[string]interface{}{"aspects": "not a map"}, nil, false, true, "InverseTransformEntryLinkAspects: 'aspects' field is not a map[string]interface{}, got string"},
-		{"aspect value does not contain data", map[string]interface{}{"aspects": map[string]interface{}{"key1": map[string]interface{}{"wrong": "value"}}}, nil, false, true, "InverseTransformEntryLinkAspects: value for key 'key1' does not contain 'data' field"},
 		{"aspect value is not a map", map[string]interface{}{"aspects": map[string]interface{}{"key1": "not a map value"}}, nil, false, true, "InverseTransformEntryLinkAspects: value for key 'key1' is not a map[string]interface{}, got string"},
-		{"data in aspect value is not a map", map[string]interface{}{"aspects": map[string]interface{}{"key1": map[string]interface{}{"data": "not-a-map"}}}, nil, false, true, "InverseTransformEntryLinkAspects: 'data' field for key 'key1' is not a map[string]interface{}, got string"},
 	}
 
 	for _, tc := range testCases {
@@ -309,15 +271,15 @@ func TestTransformEntryLinkAspects(t *testing.T) {
 		{"aspects key is absent", map[string]interface{}{"otherKey": "value"}, nil, true, false, ""},
 		{"aspects value is nil", map[string]interface{}{"aspects": nil}, nil, true, false, ""},
 		{"aspects is empty slice", map[string]interface{}{"aspects": []interface{}{}}, map[string]interface{}{}, false, false, ""},
-		{"aspects with one item", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"aspectType": "key1", "data": map[string]interface{}{"foo": "bar"}}}}, map[string]interface{}{"key1": map[string]interface{}{"data": map[string]interface{}{"foo": "bar"}}}, false, false, ""},
-		{"aspects with multiple items", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"aspectType": "key1", "data": map[string]interface{}{"foo": "bar"}}, map[string]interface{}{"aspectType": "key2", "data": map[string]interface{}{"abc": "xyz"}}}}, map[string]interface{}{"key1": map[string]interface{}{"data": map[string]interface{}{"foo": "bar"}}, "key2": map[string]interface{}{"data": map[string]interface{}{"abc": "xyz"}}}, false, false, ""},
-		{"aspects with duplicate aspectType", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"aspectType": "key1", "data": map[string]interface{}{"foo": "bar"}}, map[string]interface{}{"aspectType": "key2", "data": map[string]interface{}{"abc": "xyz"}}, map[string]interface{}{"aspectType": "key1", "data": map[string]interface{}{"new": "baz"}}}}, map[string]interface{}{"key1": map[string]interface{}{"data": map[string]interface{}{"new": "baz"}}, "key2": map[string]interface{}{"data": map[string]interface{}{"abc": "xyz"}}}, false, false, ""},
-		{"aspects is wrong type (not slice)", map[string]interface{}{"aspects": "not a slice"}, nil, false, true, "TransformAspects: 'aspects' field is not a []interface{}, got string"},
+		{"aspects with one item", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"aspectKey": "key1", "aspect": map[string]interface{}{"data": "value1"}}}}, map[string]interface{}{"key1": map[string]interface{}{"data": "value1"}}, false, false, ""},
+		{"aspects with one item that has no aspect", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"aspectKey": "key1"}}}, map[string]interface{}{"key1": map[string]interface{}{"data": map[string]interface{}{}}}, false, false, ""},
+		{"aspects with multiple items", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"aspectKey": "key1", "aspect": map[string]interface{}{"data": "value1"}}, map[string]interface{}{"aspectKey": "key2", "aspect": map[string]interface{}{"data": "value2"}}}}, map[string]interface{}{"key1": map[string]interface{}{"data": "value1"}, "key2": map[string]interface{}{"data": "value2"}}, false, false, ""},
+		{"aspects with duplicate aspectKey", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"aspectKey": "key1", "aspect": map[string]interface{}{"data": "value_first"}}, map[string]interface{}{"aspectKey": "key2", "aspect": map[string]interface{}{"data": "value2"}}, map[string]interface{}{"aspectKey": "key1", "aspect": map[string]interface{}{"data": "value_last"}}}}, map[string]interface{}{"key1": map[string]interface{}{"data": "value_last"}, "key2": map[string]interface{}{"data": "value2"}}, false, false, ""},
+		{"aspects is wrong type (not slice)", map[string]interface{}{"aspects": "not a slice"}, nil, false, true, "TransformEntryLinkAspects: 'aspects' field is not a []interface{}, got string"},
 		{"item in slice is not a map", map[string]interface{}{"aspects": []interface{}{"not a map"}}, nil, false, true, "TransformEntryLinkAspects: item in 'aspects' slice at index 0 is not a map[string]interface{}, got string"},
-		{"item map missing aspectType", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"wrongKey": "k1", "data": map[string]interface{}{}}}}, nil, false, true, "TransformEntryLinkAspects: 'aspectType' not found in aspect item at index 0"},
-		{"aspectType is not a string", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"aspectType": 123, "data": map[string]interface{}{}}}}, nil, false, true, "TransformEntryLinkAspects: 'aspectType' in item at index 0 is not a string, got int"},
-		{"item map missing data", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"aspectType": "key1"}}}, nil, false, true, "TransformEntryLinkAspects: 'data' not found in aspect item at index 0"},
-		{"data is not a map", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"aspectType": "key1", "data": "not-a-map"}}}, nil, false, true, "TransformEntryLinkAspects: 'data' in item at index 0 is not a map[string]interface{}, got string"},
+		{"item map missing aspectKey", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"wrongKey": "k1", "aspect": map[string]interface{}{}}}}, nil, false, true, "TransformEntryLinkAspects: 'aspectKey' not found in aspect item at index 0"},
+		{"aspectKey is not a string", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"aspectKey": 123, "aspect": map[string]interface{}{}}}}, nil, false, true, "TransformEntryLinkAspects: 'aspectKey' in item at index 0 is not a string, got int"},
+		{"aspect is present but wrong type", map[string]interface{}{"aspects": []interface{}{map[string]interface{}{"aspectKey": "key1", "aspect": "not a map"}}}, map[string]interface{}{"key1": map[string]interface{}{"data": map[string]interface{}{}}}, false, false, ""},
 	}
 
 	for _, tc := range testCases {
@@ -368,44 +330,7 @@ func TestTransformEntryLinkAspects(t *testing.T) {
 			}
 
 			if !reflect.DeepEqual(actualAspectsMap, tc.expectedAspects) {
-				t.Errorf("%s: TransformAspects() result mismatch:\ngot:  %#v\nwant: %#v", tc.name, actualAspectsMap, tc.expectedAspects)
-			}
-		})
-	}
-}
-
-func TestCompareJsonData(t *testing.T) {
-	key := "some_key"
-
-	testCases := []struct {
-		name     string
-		old      string
-		new      string
-		expected bool
-	}{
-		{"identical simple json", `{"a": "b"}`, `{"a": "b"}`, true},
-		{"different ordering", `{"a": 1, "b": 2}`, `{"b": 2, "a": 1}`, true},
-		{"different whitespace", `{ "a" :   1 }`, `{"a":1}`, true},
-		{"totally different content", `{"a": "b"}`, `{"x": "y"}`, false},
-		{"same keys different values", `{"a": 1}`, `{"a": 2}`, false},
-
-		// The "Double Encoding" cases (Critical for Permadiff fix)
-		{"double encoded state vs single encoded config", `"{\"joins\":[],\"userManaged\":true}"`, `{"joins":[],"userManaged":true}`, true},
-		{"double encoded state vs double encoded config", `"{\"a\":1}"`, `"{\"a\":1}"`, true},
-		{"double encoded state with whitespace vs single encoded config", `"{\"a\":   1}"`, `{"a":1}`, true},
-
-		// Edge/Error cases
-		{"invalid json in old", `{invalid}`, `{"a":1}`, false},
-		{"invalid json in new", `{"a":1}`, `{invalid}`, false},
-		{"empty strings", "", "", false},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			// Note: We pass nil for *schema.ResourceData as the function doesn't use it
-			result := dataplex.CompareJsonData(key, tc.old, tc.new, nil)
-			if result != tc.expected {
-				t.Fatalf("%s: compareJsonData() result mismatch: got %v, want %v\nOld: %s\nNew: %s", tc.name, result, tc.expected, tc.old, tc.new)
+				t.Errorf("%s: TransformEntryLinkAspects() result mismatch:\ngot:  %#v\nwant: %#v", tc.name, actualAspectsMap, tc.expectedAspects)
 			}
 		})
 	}
@@ -437,7 +362,7 @@ func TestAccDataplexEntryLink_dataplexEntryLinkUpdate(t *testing.T) {
 				ResourceName:            "google_dataplex_entry_link.full_entry_link_with_aspect",
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{"entry_group_id", "entry_link_id", "location"},
+				ImportStateVerifyIgnore: []string{"aspects", "entry_group_id", "entry_link_id", "location"},
 			},
 		},
 	})
@@ -551,11 +476,13 @@ resource "google_dataplex_entry_link" "full_entry_link_with_aspect" {
     type = ""
   }
   aspects {
-    aspect_type = "655216118709.global.schema-join"
-    data = jsonencode({
-      joins       = []
-      userManaged = true
-    })
+    aspect_key = "655216118709.global.schema-join"
+	aspect {
+		data = jsonencode({
+			joins       = []
+			userManaged = true
+		})
+	}
   }
 }
 `, context)

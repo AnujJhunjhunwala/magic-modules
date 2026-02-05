@@ -1,44 +1,26 @@
-// This decoder validates the number of aspects, filters the API response to include only 
-// aspects defined in the configuration (preserving all aspects during import/empty config), 
-// and transforms the aspect map into a slice.
-aspects := res["aspects"]
-if aspects != nil {
-	_, errs := NumberOfEntryLinkAspectsValidation(aspects, "aspects")
-
-	if len(errs) > 0 {
-		var msgs []string
-		for _, e := range errs {
-			msgs = append(msgs, e.Error())
-		}
-		return nil, fmt.Errorf("aspects validation failed: %s", strings.Join(msgs, "; "))
-	}
-}
-
-aspectTypeKeysOfInterest := make(map[string]struct{})
+aspectKeysOfInterest := make(map[string]struct{})
 var err error
 
 if d.HasChange("aspects") {
 	currentAspects, futureAspects := d.GetChange("aspects")
-	err = AddEntryLinkAspectsToSet(aspectTypeKeysOfInterest, currentAspects)
+	err = AddEntryLinkAspectsToSet(aspectKeysOfInterest, currentAspects)
 	if err != nil {
 		return nil, err
 	}
-	err = AddEntryLinkAspectsToSet(aspectTypeKeysOfInterest, futureAspects)
+	err = AddEntryLinkAspectsToSet(aspectKeysOfInterest, futureAspects)
 	if err != nil {
 		return nil, err
 	}
 } else {
-	err = AddEntryLinkAspectsToSet(aspectTypeKeysOfInterest, d.Get("aspects"))
+	err = AddEntryLinkAspectsToSet(aspectKeysOfInterest, d.Get("aspects"))
 	if err != nil {
 		return nil, err
 	}
 }
 
-if len(aspectTypeKeysOfInterest) > 0 {
-	err = FilterAspects(aspectTypeKeysOfInterest, res)
-	if err != nil {
-		return nil, err
-	}
+err = FilterEntryLinkAspects(aspectKeysOfInterest, res)
+if err != nil {
+	return nil, err
 }
 
 err = InverseTransformEntryLinkAspects(res)
