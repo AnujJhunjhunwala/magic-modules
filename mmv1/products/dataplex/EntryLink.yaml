@@ -140,10 +140,8 @@ properties:
           type: String
           required: true
           description: |
-              Depending on how the aspect is attached to the entry link, the format of the aspect key can be one of the following:
-
-              If the aspect is attached directly to the entry link: {project_number}.{locationId}.{aspectTypeId}
-              If the aspect is attached to an entry link's path: {project_number}.{locationId}.{aspectTypeId}@{path}
+              The map keys of the Aspects which the service should modify. 
+              It should be the aspect type reference in the format `{project_number}.{location_id}.{aspect_type_id}`.
         - name: 'aspect'
           type: NestedObject
           required: true
