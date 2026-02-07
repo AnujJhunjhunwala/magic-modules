@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-provider-google/google/acctest"
 	"github.com/hashicorp/terraform-provider-google/google/envvar"
 	dataplex "github.com/hashicorp/terraform-provider-google/google/services/dataplex"
@@ -336,12 +337,11 @@ func TestTransformEntryLinkAspects(t *testing.T) {
 	}
 }
 
-func TestAccDataplexEntryLink_dataplexEntryLinkUpdate(t *testing.T) {
+func TestAccDataplexEntryLink_update(t *testing.T) {
 	t.Parallel()
 
 	context := map[string]interface{}{
 		"project_number": envvar.GetTestProjectNumberFromEnv(),
-		"project_id":     envvar.GetTestProjectFromEnv(),
 		"random_suffix":  acctest.RandString(t, 10),
 	}
 
@@ -350,7 +350,7 @@ func TestAccDataplexEntryLink_dataplexEntryLinkUpdate(t *testing.T) {
 		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories(t),
 		Steps: []resource.TestStep{
 			{
-				Config: testAccDataplexEntryLink_dataplexEntryLinkUpdatePrepare(context),
+				Config: testAccDataplexEntryLink_dataplexEntryLinkUpdate(context),
 			},
 			{
 				ResourceName:            "google_dataplex_entry_link.basic_entry_link",
@@ -358,24 +358,17 @@ func TestAccDataplexEntryLink_dataplexEntryLinkUpdate(t *testing.T) {
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: []string{"entry_group_id", "entry_link_id", "location"},
 			},
-			{
-				ResourceName:            "google_dataplex_entry_link.full_entry_link_with_aspect",
-				ImportState:             true,
-				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{"aspects", "entry_group_id", "entry_link_id", "location"},
-			},
 		},
 	})
 }
 
-func testAccDataplexEntryLink_dataplexEntryLinkUpdatePrepare(context map[string]interface{}) string {
+func testAccDataplexEntryLink_dataplexEntryLinkUpdate(context map[string]interface{}) string {
 	return acctest.Nprintf(`
 resource "google_dataplex_entry_group" "entry-group-basic" {
   location = "us-central1"
   entry_group_id = "tf-test-entry-group%{random_suffix}"
   project = "%{project_number}"
 }
-
 resource "google_dataplex_entry" "source" {
   location = "us-central1"
   entry_group_id = google_dataplex_entry_group.entry-group-basic.entry_group_id
@@ -383,18 +376,15 @@ resource "google_dataplex_entry" "source" {
   entry_type = google_dataplex_entry_type.entry-type-basic.name
   project = "%{project_number}"
 }
-
 resource "google_dataplex_entry_type" "entry-type-basic" {
   entry_type_id = "tf-test-entry-type%{random_suffix}"
   location = "us-central1"
   project = "%{project_number}"
 }
-
 resource "google_dataplex_glossary" "term_test_id_full" {
   glossary_id = "tf-test-glossary%{random_suffix}"
   location    = "us-central1"
 }
-
 resource "google_dataplex_glossary_term" "term_test_id_full" {
   parent = "projects/${google_dataplex_glossary.term_test_id_full.project}/locations/us-central1/glossaries/${google_dataplex_glossary.term_test_id_full.glossary_id}"
   glossary_id = google_dataplex_glossary.term_test_id_full.glossary_id
@@ -404,7 +394,6 @@ resource "google_dataplex_glossary_term" "term_test_id_full" {
   display_name = "terraform term"
   description = "term created by Terraform"
 }
-
 resource "google_dataplex_entry_link" "basic_entry_link" {
   project = "%{project_number}"
   location = "us-central1"
@@ -420,11 +409,59 @@ resource "google_dataplex_entry_link" "basic_entry_link" {
 	type = "TARGET"
   }
 }
+`, context)
+}
+
+func TestAccDataplexEntryLink_aspectUpdate(t *testing.T) {
+	t.Parallel()
+
+	context := map[string]interface{}{
+		"project_number": envvar.GetTestProjectNumberFromEnv(),
+		"project_id":     envvar.GetTestProjectFromEnv(),
+		"random_suffix":  acctest.RandString(t, 10),
+	}
+
+	acctest.VcrTest(t, resource.TestCase{
+		PreCheck:                 func() { acctest.AccTestPreCheck(t) },
+		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories(t),
+		CheckDestroy:             testAccCheckDataplexEntryLinkDestroyProducer(t),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccDataplexEntryLink_aspectUpdatePrepare(context),
+			},
+			{
+				ResourceName:            "google_dataplex_entry_link.full_entry_link_with_aspect",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"aspects", "entry_group_id", "entry_link_id", "location"},
+			},
+
+			{
+				Config: testAccDataplexEntryLink_aspectUpdate(context),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("google_dataplex_entry_link.full_entry_link_with_aspect", plancheck.ResourceActionUpdate),
+					},
+				},
+			},
+			{
+				ResourceName:            "google_dataplex_entry_link.full_entry_link_with_aspect",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"aspects", "dataset_id", "table_id", "entry_id", "location"},
+			},
+		},
+	})
+}
+
+func testAccDataplexEntryLink_aspectUpdatePrepare(context map[string]interface{}) string {
+	return acctest.Nprintf(`
 
 resource "google_bigquery_dataset" "bq_dataset" {
   dataset_id = "tf_test_dataset_%{random_suffix}"
   project    = "%{project_number}"
-  location   = "us-central1"
+  # Update location to us-central1 later
+  location   = "us"
 }
 
 resource "google_bigquery_table" "table1" {
@@ -466,7 +503,8 @@ resource "google_dataplex_entry_link" "full_entry_link_with_aspect" {
   location = "us-central1"
   entry_group_id = "@bigquery"
   entry_link_id = "tf-test-full-entry-link%{random_suffix}"
-  entry_link_type = "projects/655216118709/locations/global/entryLinkTypes/schema-join"
+  # Update project number later with 655216118709
+  entry_link_type = "projects/418487367933/locations/global/entryLinkTypes/schema-join"
   entry_references {
     name = "projects/%{project_number}/locations/us-central1/entryGroups/@bigquery/entries/bigquery.googleapis.com/projects/%{project_id}/datasets/${google_bigquery_dataset.bq_dataset.dataset_id}/tables/${google_bigquery_table.table1.table_id}"
     type = ""
@@ -476,11 +514,85 @@ resource "google_dataplex_entry_link" "full_entry_link_with_aspect" {
     type = ""
   }
   aspects {
-    aspect_key = "655216118709.global.schema-join"
+	# Update project number later with 655216118709
+    aspect_key = "418487367933.global.schema-join"
 	aspect {
 		data = jsonencode({
 			joins       = []
 			userManaged = true
+		})
+	}
+  }
+}
+`, context)
+}
+
+func testAccDataplexEntryLink_aspectUpdate(context map[string]interface{}) string {
+	return acctest.Nprintf(`
+
+resource "google_bigquery_dataset" "bq_dataset" {
+  dataset_id = "tf_test_dataset_%{random_suffix}"
+  project    = "%{project_number}"
+  # Update location to us-central1 later
+  location   = "us"
+}
+
+resource "google_bigquery_table" "table1" {
+  deletion_protection = false
+  dataset_id = google_bigquery_dataset.bq_dataset.dataset_id
+  table_id   = "table1_%{random_suffix}"
+  project    = "%{project_number}"
+  schema     = <<EOF
+[
+  {
+    "name": "col1",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Column 1"
+  }
+]
+EOF
+}
+
+resource "google_bigquery_table" "table2" {
+  deletion_protection = false
+  dataset_id = google_bigquery_dataset.bq_dataset.dataset_id
+  table_id   = "table2_%{random_suffix}"
+  project    = "%{project_number}"
+  schema     = <<EOF
+[
+  {
+    "name": "colA",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Column A"
+  }
+]
+EOF
+}
+
+resource "google_dataplex_entry_link" "full_entry_link_with_aspect" {
+  project = "%{project_number}"
+  location = "us-central1"
+  entry_group_id = "@bigquery"
+  entry_link_id = "tf-test-full-entry-link%{random_suffix}"
+  # Update project number later with 655216118709
+  entry_link_type = "projects/418487367933/locations/global/entryLinkTypes/schema-join"
+  entry_references {
+    name = "projects/%{project_number}/locations/us-central1/entryGroups/@bigquery/entries/bigquery.googleapis.com/projects/%{project_id}/datasets/${google_bigquery_dataset.bq_dataset.dataset_id}/tables/${google_bigquery_table.table1.table_id}"
+    type = ""
+  }
+  entry_references {
+    name = "projects/%{project_number}/locations/us-central1/entryGroups/@bigquery/entries/bigquery.googleapis.com/projects/%{project_id}/datasets/${google_bigquery_dataset.bq_dataset.dataset_id}/tables/${google_bigquery_table.table2.table_id}"
+    type = ""
+  }
+  aspects {
+	# Update project number later with 655216118709
+    aspect_key = "418487367933.global.schema-join"
+	aspect {
+		data = jsonencode({
+			joins       = []
+			userManaged = false
 		})
 	}
   }

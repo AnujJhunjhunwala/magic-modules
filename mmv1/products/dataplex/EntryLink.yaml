@@ -23,7 +23,7 @@ docs:
 base_url: 'projects/{{project}}/locations/{{location}}/entryGroups/{{entry_group_id}}/entryLinks/{{entry_link_id}}'
 self_link: 'projects/{{project}}/locations/{{location}}/entryGroups/{{entry_group_id}}/entryLinks/{{entry_link_id}}'
 create_url: 'projects/{{project}}/locations/{{location}}/entryGroups/{{entry_group_id}}/entryLinks?entryLinkId={{entry_link_id}}'
-immutable: true
+update_verb: 'PATCH'
 import_format:
   - 'projects/{{project}}/locations/{{location}}/entryGroups/{{entry_group_id}}/entryLinks/{{entry_link_id}}'
 
@@ -34,6 +34,7 @@ custom_code:
 
 timeouts:
   insert_minutes: 20
+  update_minutes: 20
   delete_minutes: 20
 examples:
   - name: 'dataplex_entry_link_basic'
@@ -67,17 +68,20 @@ parameters:
     description: |
       The id of the entry group this entry link is in.
     url_param_only: true
+    immutable: true
     required: true
   - name: 'entryLinkId'
     type: String
     description: |
       The id of the entry link to create.
     url_param_only: true
+    immutable: true
     required: true
   - name: location
     type: String
     description: The location for the entry.
     url_param_only: true
+    immutable: true
     required: true
 properties:
   - name: 'name'
@@ -86,12 +90,14 @@ properties:
       The relative resource name of the Entry Link, of the form:
       projects/{project_id_or_number}/locations/{location_id}/entryGroups/{entry_group_id}/entryLinks/{entry_link_id}
     output: true
+    immutable: true
   - name: 'entryLinkType'
     type: String
     description: |
       Relative resource name of the Entry Link Type used to create this Entry Link. For example:
       projects/dataplex-types/locations/global/entryLinkTypes/definition
     required: true
+    immutable: true
   - name: 'createTime'
     type: Time
     description: |
@@ -140,10 +146,8 @@ properties:
           type: String
           required: true
           description: |
-              Depending on how the aspect is attached to the entry link, the format of the aspect key can be one of the following:
-
-              If the aspect is attached directly to the entry link: {project_number}.{locationId}.{aspectTypeId}
-              If the aspect is attached to an entry link's path: {project_number}.{locationId}.{aspectTypeId}@{path}
+              The map keys of the Aspects which the service should modify. 
+              It should be the aspect type reference in the format `{project_number}.{location_id}.{aspect_type_id}`.        
         - name: 'aspect'
           type: NestedObject
           required: true
